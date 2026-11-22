@@ -7,9 +7,12 @@
 - Clerk dev instance (app_3MTXFz7TjDaolRLWdBgGn9plwmU): email code + passkeys + Google/Apple; passwords, usernames, names and Discord off; disposable emails blocked; organisations on (5 members); legal consent link; waitlist sign-up.
 - Pipeline: CI, CodeQL, Staging, Release to production (approval + preflight + migration rehearsal + post-release checks + fix forward), Production watch, Dependabot.
 
-## Waiting on KFD
-1. Allow GitHub access for shjfemi-isiro/Times-Table-Adventure (push was blocked), or push the zip yourself.
-2. Clerk: paste the dev secret key into Netlify staging as CLERK_SECRET_KEY; add the webhook and set CLERK_WEBHOOK_SIGNING_SECRET.
+- GitHub: code pushed to main; CI green (tests, build, browser + accessibility, audit, gitleaks). `production` environment created with KFD as required reviewer and admin bypass off. 8 repository variables set.
+- Clerk: staging webhook created (user.deleted, organization.created, organizationMembership.created/deleted). Passkeys switched off again so Clerk stays on the free plan.
+
+## Waiting on KFD (secrets: must be pasted by a person)
+1. Netlify staging env vars: CLERK_SECRET_KEY (Clerk > API keys) and CLERK_WEBHOOK_SIGNING_SECRET (Clerk > Webhooks > endpoint > Signing secret).
+2. GitHub repository secrets: NETLIFY_AUTH_TOKEN, NEON_API_KEY. Environment `staging`: STAGING_DATABASE_URL_OWNER, STAGING_HEALTH_KEY. Environment `production`: PROD_DATABASE_URL_OWNER, PROD_HEALTH_KEY.
 3. A custom domain for the Clerk production instance.
 4. First staging deploy (blocked from this session's network).
 5. Legal review of docs/COMPLIANCE.md gaps (US consent method, Egypt licence, DPIA).
