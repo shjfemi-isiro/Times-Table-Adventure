@@ -45,4 +45,4 @@ jobs:
         run: npm run check:headers
         env: { EXPECT_ENV: staging }
       - name: Browser and accessibility checks
-        run: npx playwright install --with-deps chromium && npm run e2e
+        run: npm i --no-save playwright@1.65.1 && npx playwright install --with-deps chromium && npm run e2e

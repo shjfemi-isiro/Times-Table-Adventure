@@ -104,7 +104,7 @@ jobs:
           HEALTH_KEY: ${{ secrets.PROD_HEALTH_KEY }}
           EXPECT_MIGRATION: ${{ vars.EXPECT_MIGRATION }}
         run: |
-          npm run smoke && npm run check:headers && npx playwright install --with-deps chromium && npm run e2e
+          npm run smoke && npm run check:headers && npm i --no-save playwright@1.65.1 && npx playwright install --with-deps chromium && npm run e2e
       - name: Mark release good
         if: steps.verify.outcome == 'success'
         run: |

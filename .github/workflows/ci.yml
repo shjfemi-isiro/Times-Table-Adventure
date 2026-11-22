@@ -31,7 +31,7 @@ jobs:
           CLERK_PUBLISHABLE_KEY: pk_test_Y2kuY2xlcmsuYWNjb3VudHMuZGV2JA==
       - name: Browser and accessibility checks on the built site
         run: |
-          npx playwright install --with-deps chromium
+          npm i --no-save playwright@1.65.1 && npx playwright install --with-deps chromium
           node scripts/serve-dist.mjs dist 4599 &
           sleep 1
           BASE_URL=http://localhost:4599 npm run e2e
