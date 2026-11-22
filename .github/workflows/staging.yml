@@ -1,0 +1,48 @@
+name: Staging
+# Every merge to main: migrate the staging database, deploy to the staging project,
+# then run the full check suite against the live staging URL. A release to
+# production is only allowed for a commit that passed here.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: staging
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 20
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      SITE_ID: ${{ vars.NETLIFY_STAGING_SITE_ID }}
+      BASE_URL: ${{ vars.STAGING_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run lint:migrations && npm test
+      - name: Free-plan guard (staging deploys also cost 15 credits)
+        run: node scripts/deploy-guard.mjs
+        env: { CAP: '${{ vars.STAGING_MONTHLY_CAP || 6 }}' }
+      - name: Migrate staging database
+        run: node scripts/migrate.mjs check && node scripts/migrate.mjs apply
+        env: { DATABASE_URL_OWNER: '${{ secrets.STAGING_DATABASE_URL_OWNER }}' }
+      - name: Deploy to staging
+        run: npx --yes netlify-cli@27 deploy --build --prod --site "$SITE_ID" --message "staging ${GITHUB_SHA::7}"
+      - name: Smoke tests
+        run: npm run smoke
+        env:
+          EXPECT_ENV: staging
+          EXPECT_COMMIT: ${{ github.sha }}
+          HEALTH_KEY: ${{ secrets.STAGING_HEALTH_KEY }}
+          EXPECT_MIGRATION: ${{ vars.EXPECT_MIGRATION }}
+      - name: Security headers
+        run: npm run check:headers
+        env: { EXPECT_ENV: staging }
+      - name: Browser and accessibility checks
+        run: npx playwright install --with-deps chromium && npm run e2e

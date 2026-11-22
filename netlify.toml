@@ -1,0 +1,26 @@
+# Times Table Adventure: one repo, two Netlify projects (staging and production).
+# Each project sets APP_ENV and its own secrets in the Netlify UI/CLI, never here.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # Public, non-secret values that legitimately appear in the built pages.
+  SECRETS_SCAN_OMIT_KEYS = "CLERK_PUBLISHABLE_KEY,CLERK_FRONTEND_API,APP_ENV"
+
+[functions]
+  node_bundler = "esbuild"
+
+# Long-lived caching for hashed assets only; HTML always revalidates.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[redirects]]
+  from = "/parents"
+  to = "/parents/"
+  status = 301

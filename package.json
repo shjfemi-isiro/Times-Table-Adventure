@@ -1,0 +1,33 @@
+{
+  "name": "times-table-adventure-platform",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Backend, security and release pipeline for Times Table Adventure (Bridge Crossing).",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint:migrations": "node scripts/lint-migrations.mjs",
+    "check:headers": "node scripts/check-headers.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "e2e": "node e2e/run-e2e.mjs",
+    "budget": "node scripts/budget.mjs",
+    "verify": "npm run lint:migrations && npm test && npm run build"
+  },
+  "dependencies": {
+    "@clerk/backend": "^3.31.4",
+    "@netlify/blobs": "^11.1.9",
+    "pg": "^8.23.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@netlify/database-dev": "^1.0.2",
+    "@netlify/functions": "^6.1.1",
+    "axe-core": "^4.14.1",
+    "vitest": "^4.1.12"
+  }
+}

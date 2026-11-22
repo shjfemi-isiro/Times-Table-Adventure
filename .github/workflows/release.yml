@@ -1,0 +1,124 @@
+name: Release to production
+# Production is only reached through this workflow:
+#   1. the commit must already be green on staging
+#   2. a person approves the "production" GitHub environment
+#   3. production pre-flight: deploy cap, migration drift check, migration rehearsal
+#      on a throwaway Neon branch copied from production, production env vars present
+#   4. expand-only migrations, then the Netlify production deploy
+#   5. the same checks again against the live production URL
+#   6. if they fail, fix forward by redeploying the last good release
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Commit or tag to release (must have passed Staging)
+        required: true
+        default: main
+permissions:
+  contents: write
+  actions: read
+  issues: write
+concurrency:
+  group: production
+  cancel-in-progress: false
+jobs:
+  staging-passed:
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.sha.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: '${{ inputs.ref }}' }
+      - id: sha
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Require a green Staging run for this exact commit
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          ok=$(gh run list --workflow staging.yml --commit "${{ steps.sha.outputs.sha }}" --status success --json databaseId --jq 'length')
+          if [ "$ok" = "0" ]; then echo "::error::Commit has not passed Staging. Merge to main and wait for Staging first."; exit 1; fi
+
+  preflight:
+    needs: staging-passed
+    runs-on: ubuntu-latest
+    environment: production        # required reviewers are set on this environment
+    timeout-minutes: 20
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      SITE_ID: ${{ vars.NETLIFY_PROD_SITE_ID }}
+      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+      NEON_PROJECT_ID: ${{ vars.NEON_PROD_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: '${{ needs.staging-passed.outputs.sha }}' }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Free-plan guard
+        run: node scripts/deploy-guard.mjs
+        env: { CAP: '${{ vars.PROD_MONTHLY_CAP || 6 }}' }
+      - name: Production configuration is complete
+        run: |
+          names=$(npx --yes netlify-cli@27 env:list --site "$SITE_ID" --context production --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(Object.keys(JSON.parse(s)).join(" ")))')
+          for k in DATABASE_URL CLERK_SECRET_KEY CLERK_PUBLISHABLE_KEY CLERK_WEBHOOK_SIGNING_SECRET DEVICE_TOKEN_SECRET HEALTH_KEY APP_ENV; do
+            case " $names " in *" $k "*) ;; *) echo "::error::Missing production env var $k"; exit 1;; esac
+          done
+      - name: No migration drift on production
+        run: node scripts/migrate.mjs check
+        env: { DATABASE_URL_OWNER: '${{ secrets.PROD_DATABASE_URL_OWNER }}' }
+      - name: Rehearse migrations on a copy of production
+        run: |
+          name="rehearse-${GITHUB_RUN_ID}"
+          npx --yes neonctl@2 branches create --project-id "$NEON_PROJECT_ID" --name "$name" --output json > /dev/null
+          url=$(npx --yes neonctl@2 connection-string "$name" --project-id "$NEON_PROJECT_ID")
+          trap 'npx --yes neonctl@2 branches delete "$name" --project-id "$NEON_PROJECT_ID" > /dev/null' EXIT
+          DATABASE_URL_OWNER="$url" node scripts/migrate.mjs apply
+          DATABASE_URL_OWNER="$url" node scripts/migrate.mjs check
+
+  deploy:
+    needs: [staging-passed, preflight]
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 25
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      SITE_ID: ${{ vars.NETLIFY_PROD_SITE_ID }}
+      BASE_URL: ${{ vars.PROD_URL }}
+      SHA: ${{ needs.staging-passed.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: '${{ needs.staging-passed.outputs.sha }}', fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Apply expand-only migrations (old code keeps working)
+        run: node scripts/migrate.mjs apply
+        env: { DATABASE_URL_OWNER: '${{ secrets.PROD_DATABASE_URL_OWNER }}' }
+      - name: Deploy to production
+        run: npx --yes netlify-cli@27 deploy --build --prod --site "$SITE_ID" --message "release ${SHA::7}"
+      - name: Check production
+        id: verify
+        continue-on-error: true
+        env:
+          EXPECT_ENV: production
+          EXPECT_COMMIT: ${{ needs.staging-passed.outputs.sha }}
+          HEALTH_KEY: ${{ secrets.PROD_HEALTH_KEY }}
+          EXPECT_MIGRATION: ${{ vars.EXPECT_MIGRATION }}
+        run: |
+          npm run smoke && npm run check:headers && npx playwright install --with-deps chromium && npm run e2e
+      - name: Mark release good
+        if: steps.verify.outcome == 'success'
+        run: |
+          git tag -f prod-good "$SHA" && git push -f origin prod-good
+          git tag "release-$(date -u +%Y%m%d-%H%M)" "$SHA" && git push origin --tags
+      - name: Fix forward to the last good release
+        if: steps.verify.outcome != 'success'
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          if git rev-parse -q --verify prod-good >/dev/null; then
+            git checkout prod-good
+            npm ci
+            npx --yes netlify-cli@27 deploy --build --prod --site "$SITE_ID" --message "fix forward to prod-good after failed ${SHA::7}"
+            EXPECT_ENV=production npm run smoke || true
+          fi
+          gh issue create --title "Release ${SHA::7} failed production checks" --body "The release was replaced by the last good release (tag prod-good). See ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          exit 1

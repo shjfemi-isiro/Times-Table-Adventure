@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grown-ups · Times Table Adventure</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/parents/parents.css">
+<script async crossorigin="anonymous" data-clerk-publishable-key="%%CLERK_PUBLISHABLE_KEY%%" src="https://%%CLERK_FRONTEND_API%%/npm/@clerk/clerk-js@6/dist/clerk.browser.js"></script>
+<script type="module" src="/parents/app.js"></script>
+</head>
+<body data-env="%%APP_ENV%%">
+<header class="top">
+  <a class="back" href="/">Back to the game</a>
+  <h1>Grown-ups</h1>
+  <div id="user"></div>
+</header>
+<main id="main" aria-live="polite">
+  <section class="card" id="signin-card">
+    <h2>Sign in</h2>
+    <p>Children never need an account. Sign in only if you want backup, family boards or leagues.</p>
+    <div id="signin"></div>
+  </section>
+</main>
+<footer class="foot">
+  <a href="/privacy/">Privacy notice</a> · <span id="env-tag"></span>
+</footer>
+</body>
+</html>

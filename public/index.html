@@ -1,0 +1,1568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bridge Crossing: Times Table Adventure</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    box-sizing:border-box;
+    --ink:#16243D;
+    --ink-soft:#3C4F6B;
+    --bg:#EAF6FF;
+    --card:#FFFFFF;
+    --coral:#FF5D3E;
+    --coral-dark:#E1471F;
+    --marigold:#FFC93C;
+    --meadow:#2FB380;
+    --meadow-dark:#1F8F65;
+    --sky-line:#B7E3FF;
+    --danger:#E23E57;
+    --radius-lg:26px;
+    --radius-md:16px;
+    --radius-sm:10px;
+    --shadow:0 10px 30px rgba(22,36,61,0.14);
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  html{scroll-padding-top:env(safe-area-inset-top,0px);}
+  body{
+    margin:0;
+    font-family:'Nunito', system-ui, -apple-system, sans-serif;
+    background:
+      radial-gradient(circle at 12% 8%, #DFF3FF 0%, transparent 40%),
+      radial-gradient(circle at 90% 85%, #FFF1DC 0%, transparent 45%),
+      var(--bg);
+    color:var(--ink);
+    min-height:100%;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.display{font-family:'Baloo 2', 'Nunito', sans-serif;}
+  button{font-family:inherit;}
+  ::selection{background:var(--marigold);color:var(--ink);}
+  :focus-visible{outline:3px solid var(--coral); outline-offset:2px;}
+
+  #app{
+    max-width:1180px;
+    margin:0 auto;
+    padding:18px 16px 40px;
+  }
+
+  /* ---------- Top plate / header ---------- */
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:18px;
+    flex-wrap:wrap;
+  }
+  .plate{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background:var(--card);
+    border-radius:999px;
+    padding:8px 18px 8px 10px;
+    box-shadow:var(--shadow);
+  }
+  .plate .badge-icon{
+    width:40px;height:40px;border-radius:50%;
+    background:linear-gradient(135deg,var(--coral),var(--marigold));
+    display:flex;align-items:center;justify-content:center;
+    font-size:20px;
+  }
+  .plate h1{font-size:1.15rem;margin:0;font-weight:700;letter-spacing:.2px;}
+  .plate .sub{font-size:.72rem;color:var(--ink-soft);font-weight:600;margin-top:1px;}
+
+  .profile-chip{
+    display:flex;align-items:center;gap:8px;
+    background:var(--card);
+    border-radius:999px;
+    padding:6px 14px 6px 6px;
+    box-shadow:var(--shadow);
+    font-weight:700;
+    font-size:.85rem;
+    border:none;
+    cursor:pointer;
+    color:var(--ink);
+  }
+  .profile-chip .avatar{
+    width:30px;height:30px;border-radius:50%;
+    background:var(--sky-line);
+    display:flex;align-items:center;justify-content:center;
+    font-size:16px;
+  }
+
+  /* ---------- Buttons ---------- */
+  .btn{
+    border:none;
+    border-radius:999px;
+    padding:12px 22px;
+    font-weight:800;
+    font-size:.95rem;
+    cursor:pointer;
+    transition:transform .12s ease, box-shadow .12s ease;
+    box-shadow:0 6px 0 rgba(0,0,0,0.12);
+  }
+  .btn:active{transform:translateY(3px); box-shadow:0 3px 0 rgba(0,0,0,0.12);}
+  .btn-primary{background:var(--coral); color:#fff;}
+  .btn-primary:hover{background:var(--coral-dark);}
+  .btn-secondary{background:var(--card); color:var(--ink); box-shadow:0 6px 0 rgba(22,36,61,0.10);}
+  .btn-success{background:var(--meadow); color:#fff;}
+  .btn-ghost{background:transparent; color:var(--ink-soft); box-shadow:none; padding:10px 14px; font-weight:700;}
+  .btn-ghost:hover{color:var(--ink);}
+  .btn-sm{padding:8px 16px; font-size:.8rem;}
+  .btn:disabled{opacity:.45; cursor:not-allowed;}
+
+  /* ---------- Screens ---------- */
+  .screen{display:none; animation:fadeIn .35s ease;}
+  .screen.active{display:block;}
+  @keyframes fadeIn{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  .card{
+    background:var(--card);
+    border-radius:var(--radius-lg);
+    box-shadow:var(--shadow);
+    padding:22px;
+  }
+
+  /* ---------- Profile screen ---------- */
+  .center-wrap{
+    min-height:60vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .profile-card{max-width:440px; width:100%; text-align:center;}
+  .profile-card .hero-emoji{font-size:3rem; margin-bottom:6px;}
+  .profile-card input{
+    width:100%;
+    padding:14px 16px;
+    border-radius:var(--radius-md);
+    border:2px solid var(--sky-line);
+    font-size:1rem;
+    font-family:inherit;
+    margin:14px 0;
+    font-weight:700;
+    color:var(--ink);
+  }
+  .profile-card input:focus{border-color:var(--coral); outline:none;}
+  .saved-profiles{margin-top:18px; display:flex; flex-wrap:wrap; gap:8px; justify-content:center;}
+  .saved-profile-btn{
+    background:var(--bg);
+    border:2px solid var(--sky-line);
+    border-radius:999px;
+    padding:8px 16px;
+    font-weight:700;
+    cursor:pointer;
+    color:var(--ink);
+    font-size:.85rem;
+  }
+  .saved-profile-btn:hover{border-color:var(--coral);}
+  .saved-chip{display:inline-flex; align-items:center; gap:2px;}
+  .saved-chip .saved-profile-btn{border-top-right-radius:0; border-bottom-right-radius:0; border-right:none;}
+  .saved-del{
+    border:2px solid var(--sky-line); border-left:none; background:var(--bg);
+    border-radius:0 999px 999px 0; padding:8px 12px; cursor:pointer;
+    font-weight:800; font-size:.8rem; color:var(--ink-soft); font-family:inherit;
+  }
+  .saved-del:hover{color:var(--danger);}
+  .saved-del.armed{background:var(--danger); border-color:var(--danger); color:#fff;}
+
+  /* ---------- Menu screen ---------- */
+  .menu-grid{
+    display:grid;
+    grid-template-columns:1.1fr .9fr;
+    gap:18px;
+  }
+  @media (max-width:820px){ .menu-grid{grid-template-columns:1fr;} }
+
+  .section-title{
+    font-size:1.02rem;
+    font-weight:800;
+    margin:0 0 12px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .section-title .num-dot{
+    width:26px;height:26px;border-radius:50%;
+    background:var(--marigold);
+    color:var(--ink);
+    display:inline-flex;align-items:center;justify-content:center;
+    font-size:.8rem;font-weight:800;
+  }
+
+  .table-grid{
+    display:grid;
+    grid-template-columns:repeat(6,1fr);
+    gap:8px;
+    margin-bottom:10px;
+  }
+  @media (max-width:480px){ .table-grid{grid-template-columns:repeat(4,1fr);} }
+  .table-tile{
+    aspect-ratio:1;
+    border-radius:14px;
+    border:2px solid var(--sky-line);
+    background:#fff;
+    font-weight:800;
+    font-size:1.05rem;
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--ink);
+    transition:all .12s ease;
+  }
+  .table-tile:hover{border-color:var(--coral);}
+  .table-tile.selected{background:var(--coral); border-color:var(--coral); color:#fff; transform:scale(1.05);}
+  .mixed-tile{
+    width:100%;
+    border-radius:14px;
+    border:2px solid var(--sky-line);
+    background:#fff;
+    font-weight:800;
+    padding:12px;
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    gap:8px;
+    color:var(--ink);
+  }
+  .mixed-tile.selected{background:var(--marigold); border-color:var(--marigold);}
+
+  .pick-row{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
+  }
+  @media (max-width:480px){ .pick-row{grid-template-columns:repeat(2,1fr);} }
+  .pick-card{
+    border:2px solid var(--sky-line);
+    border-radius:16px;
+    padding:10px 8px 8px;
+    cursor:pointer;
+    text-align:center;
+    background:#fff;
+    transition:all .12s ease;
+  }
+  .pick-card:hover{border-color:var(--coral);}
+  .pick-card.selected{border-color:var(--coral); background:#FFF3EF; box-shadow:0 0 0 3px rgba(255,93,62,.15);}
+  .pick-card svg{width:100%; height:44px;}
+  .pick-card .pick-label{font-size:.72rem; font-weight:700; margin-top:4px; color:var(--ink-soft);}
+  .pick-card.selected .pick-label{color:var(--coral-dark);}
+
+  .theme-card{
+    border:2px solid var(--sky-line);
+    border-radius:16px;
+    overflow:hidden;
+    cursor:pointer;
+    background:#fff;
+    transition:all .12s ease;
+  }
+  .theme-card:hover{border-color:var(--coral);}
+  .theme-card.selected{border-color:var(--coral); box-shadow:0 0 0 3px rgba(255,93,62,.15);}
+  .theme-card .theme-preview{height:52px; width:100%;}
+  .theme-card .pick-label{padding:6px 4px; text-align:center;}
+
+  .start-bar{
+    margin-top:18px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  .start-summary{font-size:.85rem; color:var(--ink-soft); font-weight:700;}
+  .start-summary b{color:var(--ink);}
+
+  .side-card{margin-bottom:18px;}
+  .mini-stat-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:10px;}
+  .mini-stat{
+    background:var(--bg);
+    border-radius:14px;
+    padding:12px 8px;
+    text-align:center;
+  }
+  .mini-stat .v{font-size:1.3rem; font-weight:800; font-family:'Baloo 2';}
+  .mini-stat .l{font-size:.68rem; color:var(--ink-soft); font-weight:700;}
+
+  .badge-shelf-mini{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;}
+  .badge-pill{
+    width:38px;height:38px;border-radius:50%;
+    background:var(--bg);
+    display:flex;align-items:center;justify-content:center;
+    font-size:18px;
+    filter:grayscale(1);
+    opacity:.45;
+  }
+  .badge-pill.unlocked{filter:none; opacity:1; background:linear-gradient(135deg,#FFE9B0,#FFC93C); box-shadow:0 3px 0 rgba(0,0,0,.08);}
+
+  /* ---------- Game screen ---------- */
+  .game-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    margin-bottom:12px;
+    flex-wrap:wrap;
+  }
+  .dash{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  .dash-pill{
+    background:var(--card);
+    border-radius:999px;
+    padding:8px 16px;
+    box-shadow:var(--shadow);
+    font-weight:800;
+    font-size:.82rem;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .dash-pill .l{color:var(--ink-soft); font-weight:700;}
+
+  .timer-track{
+    height:8px;
+    background:var(--sky-line);
+    border-radius:999px;
+    overflow:hidden;
+    margin-bottom:14px;
+  }
+  .timer-fill{
+    height:100%;
+    background:linear-gradient(90deg,var(--meadow),var(--marigold));
+    width:100%;
+    transition:width .1s linear;
+    border-radius:999px;
+  }
+  .timer-fill.danger{background:linear-gradient(90deg,var(--coral),var(--danger));}
+
+  .stage-wrap{
+    border-radius:var(--radius-lg);
+    overflow:hidden;
+    box-shadow:var(--shadow);
+    position:relative;
+  }
+  .stage{
+    position:relative;
+    height:230px;
+    overflow:hidden;
+  }
+  .stage .sky-layer{position:absolute; inset:0;}
+  .stage .tower{
+    position:absolute;
+    top:0; bottom:34px;
+    width:26px;
+    border-radius:6px 6px 0 0;
+  }
+  .stage .tower.left{left:6%;}
+  .stage .tower.right{right:6%;}
+  .stage .cable{
+    position:absolute;
+    height:3px;
+    background:rgba(255,255,255,.55);
+    top:18px;
+    left:6%; right:6%;
+    border-radius:2px;
+  }
+  .deck{
+    position:absolute;
+    left:0; right:0; bottom:0;
+    height:34px;
+  }
+  .deck-planks{
+    position:absolute; inset:0;
+    display:flex;
+  }
+  .plank{
+    flex:1;
+    border-right:2px solid rgba(0,0,0,0.12);
+  }
+  .span-track{
+    position:absolute;
+    left:9%; right:9%;
+    bottom:34px;
+    height:0;
+  }
+  .span-marker{
+    position:absolute;
+    bottom:6px;
+    transform:translateX(-50%);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:2px;
+  }
+  .span-marker .flag{
+    width:3px; height:22px; background:rgba(22,36,61,.35); border-radius:2px;
+  }
+  .span-marker .num-bubble{
+    background:#fff;
+    border-radius:999px;
+    padding:2px 9px;
+    font-weight:800;
+    font-size:.72rem;
+    box-shadow:0 3px 8px rgba(0,0,0,.15);
+    opacity:0;
+    transform:translateY(6px) scale(.6);
+    transition:all .25s ease;
+    color:var(--ink);
+    white-space:nowrap;
+  }
+  .span-marker.lit .num-bubble{opacity:1; transform:translateY(0) scale(1); background:var(--marigold);}
+  .vehicle-wrap{
+    position:absolute;
+    bottom:30px;
+    left:9%;
+    width:64px;
+    height:44px;
+    transform:translate(-50%,0);
+    transition:left .55s cubic-bezier(.4,.1,.3,1);
+    filter:drop-shadow(0 6px 6px rgba(0,0,0,.25));
+  }
+  .vehicle-wrap svg{width:100%; height:100%;}
+  .vehicle-wrap.bounce{animation:bounce .5s ease;}
+  @keyframes bounce{0%,100%{transform:translate(-50%,0);}50%{transform:translate(-50%,-10px);}}
+
+  .question-panel{
+    background:var(--card);
+    padding:20px 22px 22px;
+  }
+  .question-row{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:14px;
+    flex-wrap:wrap;
+  }
+  .question-text{
+    font-family:'Baloo 2';
+    font-size:2.1rem;
+    font-weight:700;
+    color:var(--ink);
+  }
+  .answer-box{
+    min-width:88px;
+    min-height:58px;
+    border-radius:14px;
+    border:3px solid var(--meadow);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Baloo 2';
+    font-size:1.8rem;
+    font-weight:700;
+    color:var(--meadow-dark);
+    padding:0 14px;
+    background:#EAFBF3;
+  }
+  .feedback-line{
+    text-align:center;
+    min-height:26px;
+    margin-top:8px;
+    font-weight:800;
+    font-size:.95rem;
+  }
+  .feedback-line.ok{color:var(--meadow-dark);}
+  .feedback-line.bad{color:var(--danger);}
+
+  .numpad{
+    max-width:320px;
+    margin:16px auto 0;
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:8px;
+  }
+  .numkey{
+    padding:14px 0;
+    border-radius:12px;
+    border:none;
+    background:var(--bg);
+    font-size:1.15rem;
+    font-weight:800;
+    cursor:pointer;
+    color:var(--ink);
+  }
+  .numkey:active{background:var(--sky-line);}
+  .numkey.wide{grid-column:span 1;}
+  .numkey.submit{background:var(--meadow); color:#fff;}
+  .numkey.clear{background:var(--danger); color:#fff;}
+
+  .game-controls{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top:14px;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+
+  /* ---------- Results screen ---------- */
+  .results-hero{text-align:center; padding:8px 0 4px;}
+  .results-hero .score-big{font-family:'Baloo 2'; font-size:3rem; font-weight:800; color:var(--coral);}
+  .results-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:18px 0;}
+  @media (max-width:520px){ .results-grid{grid-template-columns:1fr 1fr;} }
+  .new-badge-strip{display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:10px;}
+  .new-badge{
+    background:linear-gradient(135deg,#FFE9B0,#FFC93C);
+    border-radius:14px;
+    padding:10px 14px;
+    text-align:center;
+    min-width:110px;
+    box-shadow:0 4px 0 rgba(0,0,0,.08);
+  }
+  .new-badge .ic{font-size:1.6rem;}
+  .new-badge .nm{font-size:.72rem; font-weight:800; margin-top:2px;}
+
+  /* ---------- Progress screen ---------- */
+  .progress-grid{display:grid; grid-template-columns:1fr 1fr; gap:18px;}
+  @media (max-width:820px){ .progress-grid{grid-template-columns:1fr;} }
+  canvas{max-width:100%; display:block;}
+  .badge-shelf{display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-top:8px;}
+  @media (max-width:480px){ .badge-shelf{grid-template-columns:repeat(3,1fr);} }
+  .shelf-badge{
+    text-align:center;
+    padding:10px 4px;
+    border-radius:14px;
+    background:var(--bg);
+  }
+  .shelf-badge.unlocked{background:linear-gradient(160deg,#FFF7DE,#FFE0A3);}
+  .shelf-badge .ic{font-size:1.7rem; filter:grayscale(1); opacity:.4;}
+  .shelf-badge.unlocked .ic{filter:none; opacity:1;}
+  .shelf-badge .nm{font-size:.66rem; font-weight:800; margin-top:4px; color:var(--ink-soft);}
+  .shelf-badge.unlocked .nm{color:var(--ink);}
+
+  .table-stat-row{
+    display:flex; align-items:center; gap:10px; margin:6px 0; font-size:.82rem; font-weight:700;
+  }
+  .table-stat-row .tlabel{width:36px; flex-shrink:0;}
+  .table-stat-row .bar-track{flex:1; height:12px; background:var(--bg); border-radius:999px; overflow:hidden;}
+  .table-stat-row .bar-fill{height:100%; background:linear-gradient(90deg,var(--meadow),var(--marigold)); border-radius:999px;}
+  .table-stat-row .pct{width:38px; text-align:right; color:var(--ink-soft);}
+
+  footer.credits{
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:.72rem;
+    margin-top:26px;
+    font-weight:700;
+  }
+
+  .visually-hidden{position:absolute; width:1px;height:1px;overflow:hidden; clip:rect(0 0 0 0);}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:.01ms !important; transition-duration:.01ms !important;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="topbar">
+    <div class="plate">
+      <div class="badge-icon">🌉</div>
+      <div>
+        <h1>Bridge Crossing</h1>
+        <div class="sub">Times Table Adventure</div>
+      </div>
+    </div>
+    <button class="profile-chip" id="profileChipBtn" style="display:none;">
+      <span class="avatar" id="profileAvatar">🚗</span>
+      <span id="profileNameLabel">Player</span>
+    </button>
+  </div>
+
+  <!-- ===================== PROFILE SCREEN ===================== -->
+  <section class="screen" id="screen-profile">
+    <div class="center-wrap">
+      <div class="card profile-card">
+        <div class="hero-emoji">🚙🌉</div>
+        <h2 style="margin:6px 0 2px;">Who's driving today?</h2>
+        <p style="color:var(--ink-soft); font-weight:600; margin-top:0;">Enter a name to start or continue your adventure.</p>
+        <input id="nameInput" type="text" maxlength="16" placeholder="Type your name..." autocomplete="off">
+        <button class="btn btn-primary" id="startProfileBtn" style="width:100%;">Let's go!</button>
+        <div class="saved-profiles" id="savedProfiles"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== MENU SCREEN ===================== -->
+  <section class="screen" id="screen-menu">
+    <div class="menu-grid">
+      <div>
+        <div class="card" style="margin-bottom:18px;">
+          <div class="section-title"><span class="num-dot">1</span> Pick a times table</div>
+          <div class="table-grid" id="tableGrid"></div>
+          <div class="mixed-tile" id="mixedTile">🔀 Mixed Mode — every table, all shuffled up</div>
+        </div>
+
+        <div class="card" style="margin-bottom:18px;">
+          <div class="section-title"><span class="num-dot">2</span> Choose your vehicle</div>
+          <div class="pick-row" id="vehicleGrid"></div>
+        </div>
+
+        <div class="card">
+          <div class="section-title"><span class="num-dot">3</span> Choose your bridge</div>
+          <div class="pick-row" id="themeGrid"></div>
+        </div>
+
+        <div class="start-bar">
+          <div class="start-summary">Ready to cross <b id="summaryTable">the 3 times table</b> on the <b id="summaryTheme">Golden Gate</b> in your <b id="summaryVehicle">Sports Car</b>.</div>
+          <button class="btn btn-primary" id="startGameBtn">Start crossing 🏁</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="card side-card">
+          <div class="section-title">📊 Your stats</div>
+          <div class="mini-stat-grid">
+            <div class="mini-stat"><div class="v" id="statPoints">0</div><div class="l">Total points</div></div>
+            <div class="mini-stat"><div class="v" id="statAccuracy">0%</div><div class="l">Accuracy</div></div>
+            <div class="mini-stat"><div class="v" id="statStreak">0</div><div class="l">Best streak</div></div>
+          </div>
+          <div class="badge-shelf-mini" id="miniBadgeShelf"></div>
+          <button class="btn btn-secondary btn-sm" id="viewProgressBtn" style="width:100%; margin-top:14px;">View full progress &amp; badges</button>
+        </div>
+        <div class="card side-card">
+          <div class="section-title">💾 Take it offline</div>
+          <p style="font-size:.8rem; color:var(--ink-soft); font-weight:600; margin-top:0;">Download this whole game as one file — it works without internet, forever.</p>
+          <button class="btn btn-success btn-sm" id="downloadBtn" style="width:100%;">Download game file</button>
+        </div>
+        <div class="card">
+          <div class="section-title">🔊 Sound</div>
+          <label style="display:flex; align-items:center; gap:10px; font-weight:700; font-size:.85rem; cursor:pointer;">
+            <input type="checkbox" id="soundToggle" checked style="width:18px;height:18px;">
+            Voice &amp; chime feedback
+          </label>
+          <button class="btn btn-ghost btn-sm" id="switchProfileBtn" style="margin-top:6px; padding-left:0;">Switch player</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== GAME SCREEN ===================== -->
+  <section class="screen" id="screen-game">
+    <div class="game-top">
+      <div class="dash">
+        <div class="dash-pill">⭐ <span class="l">Score</span> <span id="dashScore">0</span></div>
+        <div class="dash-pill">🔥 <span class="l">Streak</span> <span id="dashStreak">0</span></div>
+        <div class="dash-pill">🧮 <span class="l">Question</span> <span id="dashQNum">1</span>/<span id="dashQTotal">12</span></div>
+        <div class="dash-pill">⚡ <span class="l">Speed bonus</span> <span id="dashSpeedBonus">+0</span></div>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="quitGameBtn">Exit to menu</button>
+    </div>
+
+    <div class="timer-track"><div class="timer-fill" id="timerFill"></div></div>
+
+    <div class="stage-wrap">
+      <div class="stage" id="stage">
+        <div class="sky-layer" id="skyLayer"></div>
+        <div class="tower left" id="towerLeft"></div>
+        <div class="tower right" id="towerRight"></div>
+        <div class="cable" id="cable"></div>
+        <div class="span-track" id="spanTrack"></div>
+        <div class="vehicle-wrap" id="vehicleWrap"></div>
+        <div class="deck" id="deck">
+          <div class="deck-planks" id="deckPlanks"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="question-panel card" style="margin-top:14px;">
+      <div class="question-row">
+        <div class="question-text" id="questionText">3 × 4 = ?</div>
+        <div class="answer-box" id="answerBox">&nbsp;</div>
+      </div>
+      <div class="feedback-line" id="feedbackLine"></div>
+
+      <div class="numpad" id="numpad">
+        <button class="numkey" data-k="1">1</button>
+        <button class="numkey" data-k="2">2</button>
+        <button class="numkey" data-k="3">3</button>
+        <button class="numkey" data-k="4">4</button>
+        <button class="numkey" data-k="5">5</button>
+        <button class="numkey" data-k="6">6</button>
+        <button class="numkey" data-k="7">7</button>
+        <button class="numkey" data-k="8">8</button>
+        <button class="numkey" data-k="9">9</button>
+        <button class="numkey clear" data-k="clear">Clear</button>
+        <button class="numkey" data-k="0">0</button>
+        <button class="numkey submit" data-k="submit">Go ✓</button>
+      </div>
+
+      <div class="game-controls">
+        <button class="btn btn-secondary btn-sm" id="showDemoBtn">🔁 Show me the crossing</button>
+        <span style="font-size:.72rem; color:var(--ink-soft); font-weight:700;">Tip: your keyboard works too — type digits + Enter</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== RESULTS SCREEN ===================== -->
+  <section class="screen" id="screen-results">
+    <div class="card" style="max-width:560px; margin:0 auto;">
+      <div class="results-hero">
+        <div style="font-size:2.4rem;">🏁</div>
+        <h2 style="margin:6px 0 0;">Bridge crossed!</h2>
+        <div class="score-big" id="resultScore">0</div>
+        <div style="color:var(--ink-soft); font-weight:700;">points earned this round</div>
+      </div>
+      <div class="results-grid">
+        <div class="mini-stat"><div class="v" id="resultAccuracy">0%</div><div class="l">Accuracy</div></div>
+        <div class="mini-stat"><div class="v" id="resultBestStreak">0</div><div class="l">Best streak</div></div>
+        <div class="mini-stat"><div class="v" id="resultAvgTime">0s</div><div class="l">Avg. speed</div></div>
+      </div>
+      <div id="newBadgesWrap" style="display:none;">
+        <div class="section-title" style="justify-content:center;">🏅 New badges unlocked!</div>
+        <div class="new-badge-strip" id="newBadgeStrip"></div>
+      </div>
+      <div class="game-controls" style="justify-content:center; gap:14px; margin-top:20px;">
+        <button class="btn btn-secondary" id="resultsMenuBtn">Back to menu</button>
+        <button class="btn btn-primary" id="playAgainBtn">Play again 🚗</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== PROGRESS SCREEN ===================== -->
+  <section class="screen" id="screen-progress">
+    <div class="game-top">
+      <h2 style="margin:0;">📈 Progress &amp; Badges</h2>
+      <button class="btn btn-ghost btn-sm" id="backFromProgressBtn">← Back to menu</button>
+    </div>
+    <div class="progress-grid">
+      <div class="card">
+        <div class="section-title">Accuracy by times table</div>
+        <div id="tableStatsList"></div>
+      </div>
+      <div class="card">
+        <div class="section-title">Last sessions — score trend</div>
+        <canvas id="lineChart" width="480" height="220"></canvas>
+      </div>
+    </div>
+    <div class="card" style="margin-top:18px;">
+      <div class="section-title">🏅 Badge shelf</div>
+      <div class="badge-shelf" id="badgeShelf"></div>
+    </div>
+  </section>
+
+  <footer class="credits">Built for curious minds — practice makes the crossing easier. 🌉</footer>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   DATA: vehicles, themes, achievements
+   ============================================================ */
+
+var VEHICLES = [
+  {id:'sports-car', name:'Sports Car', body:'#FF5D3E', accent:'#16243D', roof:'#E1471F'},
+  {id:'taxi', name:'Yellow Taxi', body:'#FFC93C', accent:'#16243D', roof:'#FFD766', checker:true},
+  {id:'monster-truck', name:'Monster Truck', body:'#2FB380', accent:'#16243D', roof:'#1F8F65', big:true},
+  {id:'cyber-car', name:'Cyber Car', body:'#00F0FF', accent:'#FF2079', roof:'#7B2FF7', glow:true},
+  {id:'race-car', name:'Race Car', body:'#FFFFFF', accent:'#E23E57', roof:'#16243D', stripe:true},
+  {id:'rainbow', name:'Rainbow Cruiser', body:'url(#rainbowGrad)', accent:'#16243D', roof:'#FF6B9D', rainbow:true}
+];
+
+var THEMES = [
+  {id:'tower-bridge', name:'Tower Bridge', sky:['#9DB7CF','#E3E8EE'], tower:'#9A978F', deck:'#3E4658', accent:'#2E6FBF', tw:34, tt:0, ch:6, ct:20},
+  {id:'golden-gate', name:'Golden Gate Bridge', sky:['#7EC8E3','#FFEFD5'], tower:'#C0362C', deck:'#5A3A2E', accent:'#E8684A', tw:24, tt:0, ch:3, ct:18},
+  {id:'london-bridge', name:'London Bridge', sky:['#B9C6D6','#F2E6D0'], tower:'#CDBB98', deck:'#4B4F57', accent:'#8C7B5A', tw:32, tt:46, ch:5, ct:50},
+  {id:'third-mainland', name:'Third Mainland Bridge', sky:['#FFB46B','#7CC3CF'], tower:'#8A8F94', deck:'#3F4348', accent:'#2FB380', tw:10, tt:80, cable:false},
+  {id:'sixth-october', name:'6th October Bridge', sky:['#F6D186','#FBEBC8'], tower:'#C9923A', deck:'#5B5148', accent:'#C8102E', tw:10, tt:80, cable:false}
+];
+
+var ACHIEVEMENTS = [
+  {id:'first-crossing', name:'First Crossing', icon:'🎉', desc:'Answer your first question correctly'},
+  {id:'streak-star', name:'Streak Star', icon:'✨', desc:'Get a 5-answer streak'},
+  {id:'perfect-ten', name:'Perfect Ten', icon:'🔟', desc:'Get a 10-answer streak'},
+  {id:'speed-demon', name:'Speed Demon', icon:'⚡', desc:'Answer correctly in under 3 seconds'},
+  {id:'century-club', name:'Century Club', icon:'💯', desc:'Score 100+ points in one round'},
+  {id:'table-master', name:'Table Master', icon:'👑', desc:'100% accuracy on a full table round'},
+  {id:'mixed-master', name:'Mixed Master', icon:'🌀', desc:'90%+ accuracy in Mixed Mode'},
+  {id:'explorer', name:'Bridge Explorer', icon:'🗺️', desc:'Try all 5 bridge themes'},
+  {id:'collector', name:'Car Collector', icon:'🚘', desc:'Try all 6 vehicles'},
+  {id:'marathon', name:'Marathon Driver', icon:'🏔️', desc:'Answer 100 questions lifetime'}
+];
+
+var QUESTIONS_PER_ROUND = 12;
+var QUESTIONS_PER_MIXED_ROUND = 16;
+var TIME_PER_QUESTION = 10; // seconds
+
+/* ============================================================
+   STORAGE
+   ============================================================ */
+
+var STORE_KEY = 'ttbg_v1_profiles';
+var CURRENT_KEY = 'ttbg_v1_current';
+var storageOK = true;
+try{ localStorage.setItem('__ttbg_test__','1'); localStorage.removeItem('__ttbg_test__'); }catch(e){ storageOK = false; }
+
+function loadAllProfiles(){
+  if(!storageOK) return {};
+  try{
+    var raw = localStorage.getItem(STORE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  }catch(e){ return {}; }
+}
+function saveAllProfiles(all){
+  if(!storageOK) return;
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify(all)); }catch(e){}
+}
+function blankProfile(name){
+  return {
+    name: name,
+    vehicle: 'sports-car',
+    theme: 'tower-bridge',
+    totalPoints: 0,
+    totalCorrect: 0,
+    totalAnswered: 0,
+    bestStreak: 0,
+    tableStats: {},
+    sessions: [],
+    achievements: {},
+    vehiclesTried: [],
+    themesTried: []
+  };
+}
+
+var allProfiles = loadAllProfiles();
+var profile = null;
+
+/* ============================================================
+   AUDIO: Web Speech + Web Audio chimes
+   ============================================================ */
+
+var soundOn = true;
+var audioCtx = null;
+
+function getCtx(){
+  if(!audioCtx){
+    try{ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){ audioCtx = null; }
+  }
+  return audioCtx;
+}
+function chime(kind){
+  if(!soundOn) return;
+  var ctx = getCtx();
+  if(!ctx) return;
+  var now = ctx.currentTime;
+  var notes;
+  if(kind === 'correct') notes = [523.25, 659.25, 783.99];
+  else if(kind === 'wrong') notes = [349.23, 293.66];
+  else if(kind === 'tick') notes = [880];
+  else if(kind === 'badge') notes = [523.25, 659.25, 783.99, 1046.5];
+  else notes = [440];
+  notes.forEach(function(freq, i){
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.type = kind === 'wrong' ? 'sawtooth' : 'sine';
+    osc.frequency.value = freq;
+    var t0 = now + i * 0.11;
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(0.18, t0 + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.28);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(t0); osc.stop(t0 + 0.3);
+  });
+}
+function speak(text){
+  if(!soundOn) return;
+  try{
+    if(!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    var u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.02; u.pitch = 1.1; u.volume = 0.9;
+    window.speechSynthesis.speak(u);
+  }catch(e){}
+}
+
+/* ============================================================
+   SVG builders: vehicles + rainbow gradient defs
+   ============================================================ */
+
+function svgDefs(){
+  return '<defs><linearGradient id="rainbowGrad" x1="0" y1="0" x2="1" y2="0">' +
+    '<stop offset="0%" stop-color="#FF6B6B"/><stop offset="20%" stop-color="#FFC93C"/>' +
+    '<stop offset="40%" stop-color="#6BCB77"/><stop offset="60%" stop-color="#4D96FF"/>' +
+    '<stop offset="80%" stop-color="#B084FF"/><stop offset="100%" stop-color="#FF6FA1"/></linearGradient></defs>';
+}
+
+function vehicleSVG(v){
+  var body = v.body === 'url(#rainbowGrad)' ? 'url(#rainbowGrad)' : v.body;
+  var big = v.big;
+  var h = big ? 46 : 40;
+  var wheelR = big ? 11 : 7;
+  var wheelY = big ? 46 : 38;
+  var glow = ' style="transform:scaleX(-1);' + (v.glow ? 'filter:drop-shadow(0 0 4px ' + v.accent + ')' : '') + '"';
+  var stripeEl = v.stripe ? '<rect x="18" y="8" width="6" height="' + (h-14) + '" fill="' + v.accent + '"/>' : '';
+  var checkerEl = '';
+  if(v.checker){
+    checkerEl = '<rect x="8" y="6" width="48" height="6" fill="' + v.accent + '"/>' +
+      '<rect x="12" y="6" width="6" height="6" fill="#fff"/><rect x="24" y="6" width="6" height="6" fill="#fff"/>' +
+      '<rect x="36" y="6" width="6" height="6" fill="#fff"/><rect x="48" y="6" width="6" height="6" fill="#fff"/>';
+  }
+  return '<svg viewBox="0 0 64 ' + (h+16) + '" xmlns="http://www.w3.org/2000/svg"' + glow + '>' +
+    svgDefs() +
+    '<ellipse cx="32" cy="' + (wheelY+wheelR+2) + '" rx="26" ry="3" fill="rgba(0,0,0,0.18)"/>' +
+    '<path d="M6 ' + (h-6) + ' Q6 ' + (h-22) + ' 20 ' + (h-22) + ' Q24 ' + (h-30) + ' 40 ' + (h-30) + ' Q52 ' + (h-30) + ' 56 ' + (h-18) + ' Q60 ' + (h-16) + ' 60 ' + (h-6) + ' Z" fill="' + body + '" stroke="' + (v.accent||'#16243D') + '" stroke-width="1.5"/>' +
+    stripeEl + checkerEl +
+    '<path d="M20 ' + (h-22) + ' Q24 ' + (h-30) + ' 40 ' + (h-30) + ' Q48 ' + (h-30) + ' 52 ' + (h-23) + ' Z" fill="' + (v.roof||'#333') + '" opacity="0.9"/>' +
+    '<circle cx="18" cy="' + wheelY + '" r="' + wheelR + '" fill="#16243D"/><circle cx="18" cy="' + wheelY + '" r="' + (wheelR-3) + '" fill="#8892A6"/>' +
+    '<circle cx="46" cy="' + wheelY + '" r="' + wheelR + '" fill="#16243D"/><circle cx="46" cy="' + wheelY + '" r="' + (wheelR-3) + '" fill="#8892A6"/>' +
+    '<circle cx="14" cy="' + (h-18) + '" r="2.4" fill="#FFF6D5"/>' +
+    '</svg>';
+}
+
+/* ============================================================
+   PROFILE SCREEN
+   ============================================================ */
+
+var screens = {};
+['profile','menu','game','results','progress'].forEach(function(s){
+  screens[s] = document.getElementById('screen-' + s);
+});
+function showScreen(name){
+  Object.keys(screens).forEach(function(k){ screens[k].classList.toggle('active', k === name); });
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function renderSavedProfiles(){
+  var wrap = document.getElementById('savedProfiles');
+  wrap.innerHTML = '';
+  var names = Object.keys(allProfiles);
+  if(!names.length) return;
+  var label = document.createElement('div');
+  label.style.cssText = 'width:100%; font-size:.72rem; color:var(--ink-soft); font-weight:700; margin-top:6px;';
+  label.textContent = 'Or tap your name to continue:';
+  wrap.appendChild(label);
+  names.forEach(function(n){
+    var chip = document.createElement('span');
+    chip.className = 'saved-chip';
+    var b = document.createElement('button');
+    b.className = 'saved-profile-btn';
+    b.textContent = n;
+    b.addEventListener('click', function(){ loadProfile(n); });
+    var del = document.createElement('button');
+    del.className = 'saved-del';
+    del.textContent = '×';
+    del.setAttribute('aria-label', 'Remove player ' + n);
+    del.addEventListener('click', function(){
+      if(del.classList.contains('armed')){
+        delete allProfiles[n];
+        saveAllProfiles(allProfiles);
+        if(profile && profile.name === n){
+          profile = null;
+          document.getElementById('profileChipBtn').style.display = 'none';
+        }
+        renderSavedProfiles();
+      } else {
+        del.classList.add('armed');
+        del.textContent = 'Delete?';
+        setTimeout(function(){ del.classList.remove('armed'); del.textContent = '×'; }, 3000);
+      }
+    });
+    chip.appendChild(b);
+    chip.appendChild(del);
+    wrap.appendChild(chip);
+  });
+}
+
+function openProfileScreen(){
+  stopTimer();
+  crossToken++;
+  if(session) session.cancelled = true;
+  document.getElementById('nameInput').value = '';
+  renderSavedProfiles();
+  showScreen('profile');
+}
+
+function loadProfile(name){
+  if(!allProfiles[name]) allProfiles[name] = blankProfile(name);
+  profile = allProfiles[name];
+  if(storageOK) localStorage.setItem(CURRENT_KEY, name);
+  document.getElementById('profileNameLabel').textContent = name;
+  document.getElementById('profileChipBtn').style.display = 'flex';
+  selectedVehicle = profile.vehicle || 'sports-car';
+  var validIds = THEMES.map(function(t){ return t.id; });
+  profile.themesTried = (profile.themesTried || []).filter(function(id){ return validIds.indexOf(id) !== -1; });
+  selectedTheme = validIds.indexOf(profile.theme) !== -1 ? profile.theme : 'tower-bridge';
+  renderMenu();
+  showScreen('menu');
+}
+
+document.getElementById('startProfileBtn').addEventListener('click', function(){
+  var name = document.getElementById('nameInput').value.trim();
+  if(!name) name = 'Player ' + Math.floor(Math.random()*900+100);
+  loadProfile(name);
+});
+document.getElementById('nameInput').addEventListener('keydown', function(e){
+  if(e.key === 'Enter') document.getElementById('startProfileBtn').click();
+});
+document.getElementById('profileChipBtn').addEventListener('click', function(){
+  openProfileScreen();
+});
+document.getElementById('switchProfileBtn').addEventListener('click', function(){
+  openProfileScreen();
+});
+
+/* ============================================================
+   MENU SCREEN: table / vehicle / theme pickers
+   ============================================================ */
+
+var selectedTable = null; // number 1-12, or null when mixed
+var isMixed = false;
+var selectedVehicle = 'sports-car';
+var selectedTheme = 'tower-bridge';
+
+function buildTableGrid(){
+  var grid = document.getElementById('tableGrid');
+  grid.innerHTML = '';
+  for(var i=1;i<=12;i++){
+    (function(n){
+      var b = document.createElement('button');
+      b.className = 'table-tile';
+      b.textContent = n + '×';
+      b.addEventListener('click', function(){
+        selectedTable = n; isMixed = false;
+        refreshTableSelection(); updateSummary();
+      });
+      grid.appendChild(b);
+    })(i);
+  }
+}
+function refreshTableSelection(){
+  var tiles = document.querySelectorAll('.table-tile');
+  tiles.forEach(function(t, idx){ t.classList.toggle('selected', !isMixed && selectedTable === (idx+1)); });
+  document.getElementById('mixedTile').classList.toggle('selected', isMixed);
+}
+document.getElementById('mixedTile').addEventListener('click', function(){
+  isMixed = true; selectedTable = null;
+  refreshTableSelection(); updateSummary();
+});
+
+function buildVehicleGrid(){
+  var grid = document.getElementById('vehicleGrid');
+  grid.innerHTML = '';
+  VEHICLES.forEach(function(v){
+    var card = document.createElement('div');
+    card.className = 'pick-card';
+    card.innerHTML = vehicleSVG(v) + '<div class="pick-label">' + v.name + '</div>';
+    card.addEventListener('click', function(){
+      selectedVehicle = v.id;
+      refreshVehicleSelection(); updateSummary();
+    });
+    grid.appendChild(card);
+  });
+}
+function refreshVehicleSelection(){
+  var cards = document.querySelectorAll('#vehicleGrid .pick-card');
+  cards.forEach(function(c, idx){ c.classList.toggle('selected', VEHICLES[idx].id === selectedVehicle); });
+}
+
+function themePreviewStyle(t){
+  return 'background:linear-gradient(180deg,' + t.sky[0] + ',' + t.sky[1] + ');position:relative;';
+}
+function buildThemeGrid(){
+  var grid = document.getElementById('themeGrid');
+  grid.innerHTML = '';
+  THEMES.forEach(function(t){
+    var card = document.createElement('div');
+    card.className = 'theme-card';
+    card.innerHTML = '<div class="theme-preview" style="' + themePreviewStyle(t) + '">' +
+      '<div style="position:absolute;bottom:0;left:0;right:0;height:8px;background:' + t.deck + '"></div>' +
+      '<div style="position:absolute;top:2px;left:14%;width:6px;bottom:8px;background:' + t.tower + ';border-radius:3px 3px 0 0;"></div>' +
+      '<div style="position:absolute;top:2px;right:14%;width:6px;bottom:8px;background:' + t.tower + ';border-radius:3px 3px 0 0;"></div>' +
+      '</div><div class="pick-label">' + t.name + '</div>';
+    card.addEventListener('click', function(){
+      selectedTheme = t.id;
+      refreshThemeSelection(); updateSummary();
+    });
+    grid.appendChild(card);
+  });
+}
+function refreshThemeSelection(){
+  var cards = document.querySelectorAll('#themeGrid .theme-card');
+  cards.forEach(function(c, idx){ c.classList.toggle('selected', THEMES[idx].id === selectedTheme); });
+}
+
+function updateSummary(){
+  document.getElementById('summaryTable').textContent = isMixed ? 'Mixed Mode' : ('the ' + selectedTable + ' times table');
+  document.getElementById('summaryTheme').textContent = themeById(selectedTheme).name;
+  document.getElementById('summaryVehicle').textContent = vehicleById(selectedVehicle).name;
+}
+
+function vehicleById(id){ return VEHICLES.filter(function(v){ return v.id===id; })[0] || VEHICLES[0]; }
+function themeById(id){ return THEMES.filter(function(t){ return t.id===id; })[0] || THEMES[0]; }
+
+function renderMenu(){
+  buildTableGrid(); buildVehicleGrid(); buildThemeGrid();
+  if(selectedTable === null && !isMixed){ selectedTable = 3; }
+  refreshTableSelection(); refreshVehicleSelection(); refreshThemeSelection();
+  updateSummary();
+  renderSideStats();
+}
+
+function renderSideStats(){
+  document.getElementById('statPoints').textContent = profile.totalPoints;
+  var acc = profile.totalAnswered ? Math.round(100*profile.totalCorrect/profile.totalAnswered) : 0;
+  document.getElementById('statAccuracy').textContent = acc + '%';
+  document.getElementById('statStreak').textContent = profile.bestStreak;
+  var mini = document.getElementById('miniBadgeShelf');
+  mini.innerHTML = '';
+  ACHIEVEMENTS.slice(0,6).forEach(function(a){
+    var unlocked = !!profile.achievements[a.id];
+    var el = document.createElement('div');
+    el.className = 'badge-pill' + (unlocked ? ' unlocked' : '');
+    el.title = a.name + (unlocked ? ' — unlocked!' : ' — locked');
+    el.textContent = a.icon;
+    mini.appendChild(el);
+  });
+}
+
+document.getElementById('viewProgressBtn').addEventListener('click', function(){ renderProgress(); showScreen('progress'); });
+document.getElementById('backFromProgressBtn').addEventListener('click', function(){ renderMenu(); showScreen('menu'); });
+
+document.getElementById('soundToggle').addEventListener('change', function(e){ soundOn = e.target.checked; });
+
+/* ---- offline download ---- */
+document.getElementById('downloadBtn').addEventListener('click', function(){
+  try{
+    var html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+    var blob = new Blob([html], {type:'text/html'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'bridge-crossing-times-table.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+  }catch(e){
+    alert('Download is not available in this browser. Try right-click > Save Page As instead.');
+  }
+});
+
+/* ============================================================
+   GAME LOGIC
+   ============================================================ */
+
+var session = null; // current round state
+var crossToken = 0;  // cancels stale crossing animations
+var timerInterval = null;
+var answerBuffer = '';
+var qStartTime = 0;
+
+function buildStage(){
+  var t = themeById(selectedTheme);
+  document.getElementById('skyLayer').style.background = 'linear-gradient(180deg,' + t.sky[0] + ',' + t.sky[1] + ')';
+  ['towerLeft','towerRight'].forEach(function(id){
+    var el = document.getElementById(id);
+    el.style.background = t.tower;
+    el.style.width = (t.tw || 26) + 'px';
+    el.style.top = (t.tt || 0) + 'px';
+  });
+  var cb = document.getElementById('cable');
+  cb.style.background = t.accent;
+  cb.style.display = (t.cable === false) ? 'none' : 'block';
+  cb.style.height = (t.ch || 3) + 'px';
+  cb.style.top = (t.ct || 18) + 'px';
+  document.getElementById('deck').style.background = t.deck;
+  var planksWrap = document.getElementById('deckPlanks');
+  planksWrap.innerHTML = '';
+  for(var i=0;i<18;i++){
+    var p = document.createElement('div');
+    p.className = 'plank';
+    p.style.background = t.deck;
+    planksWrap.appendChild(p);
+  }
+  var vw = document.getElementById('vehicleWrap');
+  vw.innerHTML = vehicleSVG(vehicleById(selectedVehicle));
+  vw.style.left = '9%';
+}
+
+function generateQuestion(){
+  var table = isMixed ? (Math.floor(Math.random()*12)+1) : selectedTable;
+  var n = Math.floor(Math.random()*12)+1;
+  // avoid immediate exact repeat
+  if(session.lastQ && session.lastQ.table === table && session.lastQ.n === n){
+    n = ((n) % 12) + 1;
+  }
+  var q = {table:table, n:n, answer:table*n};
+  session.lastQ = q;
+  return q;
+}
+
+function startGame(){
+  if(!isMixed && selectedTable === null) selectedTable = 3;
+  profile.vehicle = selectedVehicle;
+  profile.theme = selectedTheme;
+  if(profile.vehiclesTried.indexOf(selectedVehicle) === -1) profile.vehiclesTried.push(selectedVehicle);
+  if(profile.themesTried.indexOf(selectedTheme) === -1) profile.themesTried.push(selectedTheme);
+
+  var total = isMixed ? QUESTIONS_PER_MIXED_ROUND : QUESTIONS_PER_ROUND;
+  session = {
+    table: selectedTable, mixed: isMixed,
+    qIndex: 0, total: total,
+    score: 0, streak: 0, bestStreak: 0,
+    correctCount: 0,
+    times: [],
+    lastQ: null,
+    newBadges: [],
+    answered: false
+  };
+  buildStage();
+  document.getElementById('dashQTotal').textContent = total;
+  saveAllProfiles(allProfiles);
+  nextQuestion();
+  showScreen('game');
+}
+document.getElementById('startGameBtn').addEventListener('click', startGame);
+document.getElementById('playAgainBtn').addEventListener('click', startGame);
+document.getElementById('resultsMenuBtn').addEventListener('click', function(){ renderMenu(); showScreen('menu'); });
+document.getElementById('quitGameBtn').addEventListener('click', function(){
+  stopTimer();
+  crossToken++;
+  if(session) session.cancelled = true;
+  renderMenu(); showScreen('menu');
+});
+
+function nextQuestion(){
+  if(session.qIndex >= session.total){ finishSession(); return; }
+  session.qIndex++;
+  session.answered = false;
+  crossToken++;
+  answerBuffer = '';
+  session.current = generateQuestion();
+  document.getElementById('questionText').textContent = session.current.table + ' × ' + session.current.n + ' = ?';
+  speak(session.current.table + ' times ' + session.current.n + ' equals what?');
+  document.getElementById('answerBox').innerHTML = '&nbsp;';
+  document.getElementById('feedbackLine').textContent = '';
+  document.getElementById('feedbackLine').className = 'feedback-line';
+  document.getElementById('dashQNum').textContent = session.qIndex;
+  document.getElementById('dashScore').textContent = session.score;
+  document.getElementById('dashStreak').textContent = session.streak;
+  document.getElementById('dashSpeedBonus').textContent = '+0';
+  resetVehiclePosition();
+  clearSpanMarkers();
+  qStartTime = Date.now();
+  startTimer();
+}
+
+function resetVehiclePosition(){
+  var vw = document.getElementById('vehicleWrap');
+  vw.style.transition = 'none';
+  vw.style.left = '9%';
+  void vw.offsetWidth;
+  vw.style.transition = '';
+}
+function clearSpanMarkers(){
+  document.getElementById('spanTrack').innerHTML = '';
+}
+
+function buildSpanMarkers(n, table){
+  var track = document.getElementById('spanTrack');
+  track.innerHTML = '';
+  for(var i=1;i<=n;i++){
+    var pct = (i/n)*100;
+    var m = document.createElement('div');
+    m.className = 'span-marker';
+    m.style.left = pct + '%';
+    m.dataset.step = i;
+    m.innerHTML = '<div class="num-bubble">' + (table*i) + '</div><div class="flag"></div>';
+    track.appendChild(m);
+  }
+}
+
+function startTimer(){
+  stopTimer();
+  var elapsed = 0;
+  var fill = document.getElementById('timerFill');
+  fill.style.width = '100%';
+  fill.classList.remove('danger');
+  timerInterval = setInterval(function(){
+    elapsed += 0.1;
+    var pct = Math.max(0, 100 - (elapsed/TIME_PER_QUESTION)*100);
+    fill.style.width = pct + '%';
+    if(pct < 30) fill.classList.add('danger');
+    var bonus = Math.max(0, Math.round((1 - elapsed/TIME_PER_QUESTION) * 10));
+    document.getElementById('dashSpeedBonus').textContent = '+' + bonus;
+    if(elapsed >= TIME_PER_QUESTION){
+      stopTimer();
+      if(!session.answered) submitAnswer(true);
+    }
+  }, 100);
+}
+function stopTimer(){ if(timerInterval){ clearInterval(timerInterval); timerInterval = null; } }
+
+/* numpad + keyboard input */
+document.getElementById('numpad').addEventListener('click', function(e){
+  var btn = e.target.closest('.numkey');
+  if(!btn) return;
+  var k = btn.dataset.k;
+  handleKey(k);
+});
+document.addEventListener('keydown', function(e){
+  if(!screens.game.classList.contains('active')) return;
+  if(e.key >= '0' && e.key <= '9') handleKey(e.key);
+  else if(e.key === 'Enter') handleKey('submit');
+  else if(e.key === 'Backspace'){ e.preventDefault(); handleKey('back'); }
+  else if(e.key === 'Escape') handleKey('clear');
+});
+function handleKey(k){
+  if(session.answered) return;
+  if(k === 'clear'){ answerBuffer = ''; }
+  else if(k === 'back'){ answerBuffer = answerBuffer.slice(0,-1); }
+  else if(k === 'submit'){ if(answerBuffer.length){ submitAnswer(false); } return; }
+  else { if(answerBuffer.length < 4) answerBuffer += k; }
+  document.getElementById('answerBox').textContent = answerBuffer.length ? answerBuffer : '\u00A0';
+}
+
+function submitAnswer(timedOut){
+  if(session.answered) return;
+  session.answered = true;
+  stopTimer();
+  var q = session.current;
+  var given = timedOut ? null : parseInt(answerBuffer, 10);
+  var correct = (given === q.answer);
+  var timeTaken = (Date.now() - qStartTime) / 1000;
+  session.times.push(timeTaken);
+
+  // table stats
+  var ts = profile.tableStats[q.table] || {correct:0,total:0};
+  ts.total++; if(correct) ts.correct++;
+  profile.tableStats[q.table] = ts;
+  profile.totalAnswered++;
+
+  var fb = document.getElementById('feedbackLine');
+  var goNext = function(){ if(!session || session.cancelled) return; nextQuestion(); };
+
+  if(correct){
+    session.correctCount++;
+    session.streak++;
+    session.bestStreak = Math.max(session.bestStreak, session.streak);
+    profile.totalCorrect++;
+    profile.bestStreak = Math.max(profile.bestStreak, session.streak);
+    var bonus = Math.max(0, Math.round((1 - timeTaken/TIME_PER_QUESTION) * 10));
+    var pts = 10 + bonus;
+    session.score += pts;
+    profile.totalPoints += pts;
+    fb.textContent = 'That\'s correct! +' + pts + ' points';
+    fb.className = 'feedback-line ok';
+    chime('correct'); speak('That\'s correct!');
+    document.getElementById('vehicleWrap').classList.add('bounce');
+    setTimeout(function(){ document.getElementById('vehicleWrap').classList.remove('bounce'); }, 500);
+    if(timeTaken < 3) queueAchievement('speed-demon');
+    if(session.streak >= 5) queueAchievement('streak-star');
+    if(session.streak >= 10) queueAchievement('perfect-ten');
+    if(session.qIndex === 1) queueAchievement('first-crossing');
+    animateCrossing(q, true, goNext);
+  } else {
+    session.streak = 0;
+    fb.textContent = timedOut ? ("Time's up! The answer was " + q.answer) : ('Try again! The answer was ' + q.answer);
+    fb.className = 'feedback-line bad';
+    chime('wrong'); speak('Try again!');
+    animateCrossing(q, false, goNext);
+  }
+  saveAllProfiles(allProfiles);
+  document.getElementById('dashScore').textContent = session.score;
+  document.getElementById('dashStreak').textContent = session.streak;
+
+}
+
+function animateCrossing(q, correct, onDone){
+  var myId = ++crossToken;
+  buildSpanMarkers(q.n, q.table);
+  var markers = document.querySelectorAll('#spanTrack .span-marker');
+  var vw = document.getElementById('vehicleWrap');
+  var hop = q.n <= 6 ? 0.55 : 0.38; // seconds per span, quicker for long crossings
+  vw.style.transition = 'left ' + hop + 's cubic-bezier(.4,.1,.3,1)';
+  var step = 0;
+  function advance(){
+    if(myId !== crossToken) return;
+    step++;
+    vw.style.left = (9 + (step/q.n)*82) + '%';
+    setTimeout(function(){
+      if(myId !== crossToken) return;
+      var marker = markers[step-1];
+      if(marker) marker.classList.add('lit');
+      if(step < q.n){
+        chime('tick');
+        advance();
+      } else {
+        // reached the far side: hold a moment so the answer can be seen, then continue
+        setTimeout(function(){
+          if(myId === crossToken && onDone) onDone();
+        }, 1200);
+      }
+    }, hop * 1000 + 40);
+  }
+  setTimeout(advance, 250);
+}
+
+function queueAchievement(id){
+  if(profile.achievements[id]) return;
+  profile.achievements[id] = Date.now();
+  session.newBadges.push(id);
+  saveAllProfiles(allProfiles);
+}
+
+document.getElementById('showDemoBtn').addEventListener('click', function(){
+  if(!session || !session.current || session.answered) return;
+  resetVehiclePosition();
+  animateCrossing(session.current, true);
+});
+
+function finishSession(){
+  stopTimer();
+  var accuracy = session.total ? Math.round(100*session.correctCount/session.total) : 0;
+  var avgTime = session.times.length ? (session.times.reduce(function(a,b){return a+b;},0)/session.times.length) : 0;
+
+  if(session.score >= 100) queueAchievement('century-club');
+  if(!isMixed && accuracy === 100) queueAchievement('table-master');
+  if(isMixed && accuracy >= 90) queueAchievement('mixed-master');
+  if(profile.themesTried.length >= 5) queueAchievement('explorer');
+  if(profile.vehiclesTried.length >= 6) queueAchievement('collector');
+  if(profile.totalAnswered >= 100) queueAchievement('marathon');
+
+  profile.sessions.push({
+    date: Date.now(),
+    table: isMixed ? 'mixed' : session.table,
+    score: session.score,
+    accuracy: accuracy,
+    avgTime: Math.round(avgTime*10)/10
+  });
+  if(profile.sessions.length > 30) profile.sessions = profile.sessions.slice(-30);
+  saveAllProfiles(allProfiles);
+
+  document.getElementById('resultScore').textContent = session.score;
+  document.getElementById('resultAccuracy').textContent = accuracy + '%';
+  document.getElementById('resultBestStreak').textContent = session.bestStreak;
+  document.getElementById('resultAvgTime').textContent = (Math.round(avgTime*10)/10) + 's';
+
+  var wrap = document.getElementById('newBadgesWrap');
+  var strip = document.getElementById('newBadgeStrip');
+  strip.innerHTML = '';
+  if(session.newBadges.length){
+    wrap.style.display = 'block';
+    session.newBadges.forEach(function(id){
+      var a = ACHIEVEMENTS.filter(function(x){return x.id===id;})[0];
+      if(!a) return;
+      var el = document.createElement('div');
+      el.className = 'new-badge';
+      el.innerHTML = '<div class="ic">' + a.icon + '</div><div class="nm">' + a.name + '</div>';
+      strip.appendChild(el);
+    });
+    chime('badge');
+  } else {
+    wrap.style.display = 'none';
+  }
+  showScreen('results');
+}
+
+/* ============================================================
+   PROGRESS SCREEN: charts + badge shelf
+   ============================================================ */
+
+function renderProgress(){
+  var list = document.getElementById('tableStatsList');
+  list.innerHTML = '';
+  for(var i=1;i<=12;i++){
+    var ts = profile.tableStats[i] || {correct:0,total:0};
+    var pct = ts.total ? Math.round(100*ts.correct/ts.total) : 0;
+    var row = document.createElement('div');
+    row.className = 'table-stat-row';
+    row.innerHTML = '<div class="tlabel">' + i + '×</div>' +
+      '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%"></div></div>' +
+      '<div class="pct">' + pct + '%</div>';
+    list.appendChild(row);
+  }
+
+  var shelf = document.getElementById('badgeShelf');
+  shelf.innerHTML = '';
+  ACHIEVEMENTS.forEach(function(a){
+    var unlocked = !!profile.achievements[a.id];
+    var el = document.createElement('div');
+    el.className = 'shelf-badge' + (unlocked ? ' unlocked' : '');
+    el.title = a.desc;
+    el.innerHTML = '<div class="ic">' + a.icon + '</div><div class="nm">' + a.name + '</div>';
+    shelf.appendChild(el);
+  });
+
+  drawLineChart();
+}
+
+function drawLineChart(){
+  var canvas = document.getElementById('lineChart');
+  var ctx = canvas.getContext('2d');
+  var W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+  var sessions = profile.sessions.slice(-10);
+  var pad = 36;
+  ctx.strokeStyle = '#EAF6FF';
+  ctx.fillStyle = '#3C4F6B';
+  ctx.font = '11px Nunito, sans-serif';
+
+  if(!sessions.length){
+    ctx.fillText('Play a round to see your progress here!', 20, H/2);
+    return;
+  }
+  var maxScore = Math.max(10, Math.max.apply(null, sessions.map(function(s){return s.score;})));
+  maxScore = Math.ceil(maxScore/10)*10;
+
+  // axes
+  ctx.strokeStyle = '#D9ECF9';
+  ctx.beginPath();
+  ctx.moveTo(pad, 10); ctx.lineTo(pad, H-pad); ctx.lineTo(W-10, H-pad);
+  ctx.stroke();
+
+  // gridlines + labels
+  ctx.fillStyle = '#8896AA';
+  for(var g=0; g<=4; g++){
+    var y = (H-pad) - (g/4)*(H-pad-10);
+    ctx.strokeStyle = '#F0F6FB';
+    ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(W-10,y); ctx.stroke();
+    ctx.fillText(Math.round(maxScore*g/4), 4, y+3);
+  }
+
+  var stepX = (W - pad - 20) / Math.max(1, sessions.length-1);
+  ctx.strokeStyle = '#FF5D3E';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  sessions.forEach(function(s, i){
+    var x = pad + i*stepX;
+    var y = (H-pad) - (s.score/maxScore) * (H-pad-10);
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+
+  sessions.forEach(function(s, i){
+    var x = pad + i*stepX;
+    var y = (H-pad) - (s.score/maxScore) * (H-pad-10);
+    ctx.fillStyle = '#FFC93C';
+    ctx.beginPath(); ctx.arc(x,y,4,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#FF5D3E'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(x,y,4,0,Math.PI*2); ctx.stroke();
+  });
+  ctx.lineWidth = 1;
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+
+function init(){
+  renderSavedProfiles();
+  showScreen('profile');
+}
+init();
+
+})();
+</script>
+</body>
+</html>
