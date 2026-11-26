@@ -186,6 +186,9 @@ async function start() {
       variables: { colorPrimary: '#1A5FCC', fontFamily: 'Nunito, system-ui, sans-serif', borderRadius: '12px' },
       // Clerk's card is 400px wide by default; let it shrink to fit a phone.
       elements: { rootBox: { width: '100%' }, cardBox: { width: '100%', maxWidth: '100%' }, card: { width: 'auto' } },
+      // Staging runs on Clerk's development instance; its orange 'Development mode' badge
+      // fails colour contrast. The page footer already says 'Environment: staging'.
+      layout: { unsafe_disableDevelopmentModeWarnings: true },
     },
   });
   if (!window.Clerk.user) {
