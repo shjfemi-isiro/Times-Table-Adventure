@@ -38,7 +38,8 @@ for (const file of walk(out).filter(f => extname(f) === '.html')) {
   writeFileSync(file, html);
 }
 
-const clerk = frontendApi ? `https://${frontendApi}` : '';
+// Clerk's sign-in also loads its bot-protection script from cdn.protect.clerk.com.
+const clerk = frontendApi ? `https://${frontendApi} https://cdn.protect.clerk.com` : '';
 const csp = [
   "default-src 'self'",
   `script-src 'self' ${[...scriptHashes].join(' ')} ${clerk} https://challenges.cloudflare.com`.replace(/\s+/g, ' ').trim(),

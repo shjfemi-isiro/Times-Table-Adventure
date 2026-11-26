@@ -23,6 +23,7 @@ describe('build and security headers', () => {
     for (const h of ['Content-Security-Policy', 'Strict-Transport-Security', 'X-Content-Type-Options: nosniff', 'Permissions-Policy', 'frame-ancestors \'none\'', "object-src 'none'"]) expect(headers).toContain(h);
     expect(headers).not.toMatch(/script-src[^;]*'unsafe-inline'/);
     expect(headers).toContain('https://demo.clerk.accounts.dev');
+    expect(headers).toMatch(/script-src[^;]*https:\/\/cdn\.protect\.clerk\.com/);
   });
   it('the game page keeps working under the CSP (its inline script is hashed)', () => {
     build({ APP_ENV: 'production', CLERK_PUBLISHABLE_KEY: pk });
