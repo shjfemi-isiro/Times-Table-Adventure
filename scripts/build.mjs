@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { join, extname } from 'node:path';
 
 const root = new URL('..', import.meta.url).pathname;
-const out = join(root, 'dist');
+const out = process.env.BUILD_OUT || join(root, 'dist');
 const appEnv = process.env.APP_ENV || 'development';
 const pk = process.env.CLERK_PUBLISHABLE_KEY || '';
 

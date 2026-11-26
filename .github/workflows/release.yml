@@ -94,7 +94,7 @@ jobs:
         run: node scripts/migrate.mjs apply
         env: { DATABASE_URL_OWNER: '${{ secrets.PROD_DATABASE_URL_OWNER }}' }
       - name: Deploy to production
-        run: npx --yes netlify-cli@27 deploy --build --prod --site "$SITE_ID" --message "release ${SHA::7}"
+        run: rm -rf dist && npx --yes netlify-cli@27 deploy --build --prod --site "$SITE_ID" --message "release ${SHA::7}"
       - name: Check production
         id: verify
         continue-on-error: true

@@ -33,7 +33,7 @@ jobs:
         run: node scripts/migrate.mjs check && node scripts/migrate.mjs apply
         env: { DATABASE_URL_OWNER: '${{ secrets.STAGING_DATABASE_URL_OWNER }}' }
       - name: Deploy to staging
-        run: npx --yes netlify-cli@27 deploy --build --prod --site "$SITE_ID" --message "staging ${GITHUB_SHA::7}"
+        run: rm -rf dist && npx --yes netlify-cli@27 deploy --build --prod --site "$SITE_ID" --message "staging ${GITHUB_SHA::7}"
       - name: Smoke tests
         run: npm run smoke
         env:

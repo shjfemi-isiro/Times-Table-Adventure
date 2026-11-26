@@ -1,19 +1,24 @@
 import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { loadMigrations, lintMigrations } from '../scripts/migrations-lib.mjs';
 
-const build = env => execFileSync('node', ['scripts/build.mjs'], { env: { ...process.env, ...env }, encoding: 'utf8' });
+// Build into a throwaway folder so tests never leave a stale dist/ behind for a deploy.
+const OUT = mkdtempSync(join(tmpdir(), 'tta-build-'));
+const build = env => execFileSync('node', ['scripts/build.mjs'], { env: { ...process.env, ...env, BUILD_OUT: OUT }, encoding: 'utf8' });
+const read = f => readFileSync(join(OUT, f), 'utf8');
 const pk = 'pk_test_' + Buffer.from('demo.clerk.accounts.dev$').toString('base64');
 
 describe('build and security headers', () => {
   it('staging is noindex; production is indexable and has a strict CSP', () => {
     build({ APP_ENV: 'staging', CLERK_PUBLISHABLE_KEY: pk });
-    let headers = readFileSync('dist/_headers', 'utf8');
+    let headers = read('_headers');
     expect(headers).toContain('X-Robots-Tag: noindex');
-    expect(readFileSync('dist/robots.txt', 'utf8')).toContain('Disallow: /');
+    expect(read('robots.txt')).toContain('Disallow: /');
     build({ APP_ENV: 'production', CLERK_PUBLISHABLE_KEY: pk });
-    headers = readFileSync('dist/_headers', 'utf8');
+    headers = read('_headers');
     expect(headers).not.toContain('X-Robots-Tag');
     for (const h of ['Content-Security-Policy', 'Strict-Transport-Security', 'X-Content-Type-Options: nosniff', 'Permissions-Policy', 'frame-ancestors \'none\'', "object-src 'none'"]) expect(headers).toContain(h);
     expect(headers).not.toMatch(/script-src[^;]*'unsafe-inline'/);
@@ -21,8 +26,8 @@ describe('build and security headers', () => {
   });
   it('the game page keeps working under the CSP (its inline script is hashed)', () => {
     build({ APP_ENV: 'production', CLERK_PUBLISHABLE_KEY: pk });
-    expect(readFileSync('dist/_headers', 'utf8')).toMatch(/'sha256-[A-Za-z0-9+/=]+'/);
-    expect(readFileSync('dist/parents/index.html', 'utf8')).not.toContain('%%');
+    expect(read('_headers')).toMatch(/'sha256-[A-Za-z0-9+/=]+'/);
+    expect(read('parents/index.html')).not.toContain('%%');
   });
   it('migrations are expand-only', () => {
     expect(lintMigrations(loadMigrations())).toEqual([]);
