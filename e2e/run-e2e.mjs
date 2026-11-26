@@ -30,7 +30,12 @@ try {
     if (overflow) failures.push(`${path}: horizontal scroll at phone width`);
     if (a11y) {
       await page.evaluate(axeSource); // evaluated via DevTools, so the page CSP stays on
-      const r = await page.evaluate(async () => (await window.axe.run(document, { resultTypes: ['violations'] })).violations
+      // Clerk's development instance (staging only) shows its own orange 'Development mode'
+      // label, which fails contrast. Production uses Clerk's live instance, which has no label.
+      await page.evaluate(() => document.querySelectorAll('#signin p').forEach(p => {
+        if (p.textContent.trim() === 'Development mode') p.setAttribute('data-axe-skip', '');
+      }));
+      const r = await page.evaluate(async () => (await window.axe.run({ exclude: [['[data-axe-skip]']] }, { resultTypes: ['violations'] })).violations
         .filter(v => ['serious', 'critical'].includes(v.impact))
         .map(v => `${v.id} (${v.nodes.length}): ` + v.nodes.slice(0, 3).map(n => `${n.target.join(' ')} ${(n.any[0]?.message || '').slice(0, 160)}`).join(' | ')));
       if (r.length) failures.push(`${path}: accessibility ${r.join(', ')}`);

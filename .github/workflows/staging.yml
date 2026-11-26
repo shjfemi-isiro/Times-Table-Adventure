@@ -22,23 +22,40 @@ jobs:
       BASE_URL: ${{ vars.STAGING_URL }}
     steps:
       - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npm run lint:migrations && npm test
+      # Changes that only touch tests, checks or docs don't change the site, so they
+      # are checked against the version already on staging instead of paying for a deploy.
+      - name: Does this change need a deploy?
+        id: need
+        run: |
+          live=$(curl -fsS "$BASE_URL/version.json" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.parse(s).commit||"")}catch{console.log("")}})' || true)
+          full=$(git rev-parse --verify --quiet "${live}^{commit}" || true)
+          if [ -n "$full" ] && ! git diff --name-only "$full" HEAD | grep -vqE '^(e2e/|tests/|docs/|README\.md|\.github/)'; then
+            echo "deploy=false" >> "$GITHUB_OUTPUT"; echo "commit=$full" >> "$GITHUB_OUTPUT"
+            echo "Only tests, checks or docs changed since ${live}: checking the live staging version, no deploy."
+          else
+            echo "deploy=true" >> "$GITHUB_OUTPUT"; echo "commit=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+          fi
       - name: Free-plan guard (staging deploys also cost 15 credits)
+        if: steps.need.outputs.deploy == 'true'
         run: node scripts/deploy-guard.mjs
         env: { CAP: '${{ vars.STAGING_MONTHLY_CAP || 6 }}' }
       - name: Migrate staging database
+        if: steps.need.outputs.deploy == 'true'
         run: node scripts/migrate.mjs check && node scripts/migrate.mjs apply
         env: { DATABASE_URL_OWNER: '${{ secrets.STAGING_DATABASE_URL_OWNER }}' }
       - name: Deploy to staging
+        if: steps.need.outputs.deploy == 'true'
         run: rm -rf dist && npx --yes netlify-cli@27 deploy --build --prod --site "$SITE_ID" --message "staging ${GITHUB_SHA::7}"
       - name: Smoke tests
         run: npm run smoke
         env:
           EXPECT_ENV: staging
-          EXPECT_COMMIT: ${{ github.sha }}
+          EXPECT_COMMIT: ${{ steps.need.outputs.commit }}
           HEALTH_KEY: ${{ secrets.STAGING_HEALTH_KEY }}
           EXPECT_MIGRATION: ${{ vars.EXPECT_MIGRATION }}
       - name: Security headers
