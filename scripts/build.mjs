@@ -38,17 +38,19 @@ for (const file of walk(out).filter(f => extname(f) === '.html')) {
   writeFileSync(file, html);
 }
 
-// Clerk's sign-in also loads its bot-protection script from cdn.protect.clerk.com.
-const clerk = frontendApi ? `https://${frontendApi} https://cdn.protect.clerk.com` : '';
+// Clerk's documented CSP needs (clerk.com/docs/guides/secure/best-practices/csp-headers):
+// its Frontend API plus *.protect.clerk.com for abuse and fraud protection.
+const clerk = frontendApi ? `https://${frontendApi}` : '';
+const protect = frontendApi ? 'https://*.protect.clerk.com' : '';
 const csp = [
   "default-src 'self'",
-  `script-src 'self' ${[...scriptHashes].join(' ')} ${clerk} https://challenges.cloudflare.com`.replace(/\s+/g, ' ').trim(),
+  `script-src 'self' ${[...scriptHashes].join(' ')} ${clerk} ${protect} https://challenges.cloudflare.com`.replace(/\s+/g, ' ').trim(),
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
   `img-src 'self' data: https://img.clerk.com`,
-  `connect-src 'self' ${clerk} https://clerk-telemetry.com`.trim(),
+  `connect-src 'self' ${clerk} ${protect ? protect + ':*' : ''} https://clerk-telemetry.com`.replace(/\s+/g, ' ').trim(),
   "worker-src 'self' blob:",
-  "frame-src https://challenges.cloudflare.com",
+  `frame-src https://challenges.cloudflare.com ${protect}`.trim(),
   "media-src 'self' blob: data:",
   "frame-ancestors 'none'",
   "base-uri 'self'",
