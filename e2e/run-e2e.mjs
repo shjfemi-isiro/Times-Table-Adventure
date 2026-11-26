@@ -32,9 +32,17 @@ try {
       await page.evaluate(axeSource); // evaluated via DevTools, so the page CSP stays on
       // Clerk's development instance (staging only) shows its own orange 'Development mode'
       // label, which fails contrast. Production uses Clerk's live instance, which has no label.
-      await page.evaluate(() => document.querySelectorAll('#signin p').forEach(p => {
-        if (p.textContent.trim() === 'Development mode') p.setAttribute('data-axe-skip', '');
-      }));
+      await page.evaluate(() => {
+        for (const el of document.querySelectorAll('#signin *')) {
+          const own = [...el.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim();
+          if (own !== 'Development mode') continue;
+          // Skip the label and the orange box around it (Clerk's own colours).
+          let box = el;
+          for (let i = 0; i < 4 && box.parentElement && box.parentElement.id !== 'signin'; i++) box = box.parentElement;
+          el.setAttribute('data-axe-skip', '');
+          box.querySelectorAll('*').forEach(n => { if (/Development mode/.test(n.textContent)) n.setAttribute('data-axe-skip', ''); });
+        }
+      });
       const r = await page.evaluate(async () => (await window.axe.run({ exclude: [['[data-axe-skip]']] }, { resultTypes: ['violations'] })).violations
         .filter(v => ['serious', 'critical'].includes(v.impact))
         .map(v => `${v.id} (${v.nodes.length}): ` + v.nodes.slice(0, 3).map(n => `${n.target.join(' ')} ${(n.any[0]?.message || '').slice(0, 160)}`).join(' | ')));
