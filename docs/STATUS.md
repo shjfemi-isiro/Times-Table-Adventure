@@ -10,9 +10,13 @@
 - GitHub: code pushed to main; CI green (tests, build, browser + accessibility, audit, gitleaks). `production` environment created with KFD as required reviewer and admin bypass off. 8 repository variables set.
 - Clerk: staging webhook created (user.deleted, organization.created, organizationMembership.created/deleted). Passkeys switched off again so Clerk stays on the free plan.
 
-## Waiting on KFD (secrets: must be pasted by a person)
-1. Netlify staging env vars: CLERK_SECRET_KEY (Clerk > API keys) and CLERK_WEBHOOK_SIGNING_SECRET (Clerk > Webhooks > endpoint > Signing secret).
-2. GitHub repository secrets: NETLIFY_AUTH_TOKEN, NEON_API_KEY. Environment `staging`: STAGING_DATABASE_URL_OWNER, STAGING_HEALTH_KEY. Environment `production`: PROD_DATABASE_URL_OWNER, PROD_HEALTH_KEY.
-3. A custom domain for the Clerk production instance.
-4. First staging deploy (blocked from this session's network).
-5. Legal review of docs/COMPLIANCE.md gaps (US consent method, Egypt licence, DPIA).
+## Staging live (26 Nov 2026)
+- https://timestableadventure-staging.netlify.app : staging database migrated, smoke, security headers, browser and accessibility checks all green (Staging run 15, commit a74e218).
+- Grown-ups page shows Clerk sign-in (Apple, Google, email code, waitlist). Clerk v6 needs its UI bundle loaded first; CSP allows Clerk's *.protect.clerk.com anti-bot service.
+- "Powered by Netlify" badge turned off on staging and production (it linked children to an outside site).
+- All Netlify env vars and GitHub secrets/variables in place. STAGING_MONTHLY_CAP raised to 8 for November (8 staging deploys used = 120 credits). Changes that only touch tests, checks or docs are now checked without a paid deploy.
+
+## Still open
+1. Live release: run "Release to production" (needs KFD's approval in GitHub). Live site needs Clerk production keys first, and those need a custom domain.
+2. Legal review of docs/COMPLIANCE.md gaps (US consent method, Egypt licence, DPIA).
+3. Design review agent was stopped before finishing; restart if wanted.
