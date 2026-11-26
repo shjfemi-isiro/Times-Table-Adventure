@@ -2,14 +2,10 @@ import type { Config, Context } from '@netlify/functions';
 import { createApp } from '../../src/app.mjs';
 import { runtime } from '../../src/runtime.mjs';
 
-let handle: ((req: Request) => Promise<Response>) | undefined;
-
+// The app is built per invocation (cheap) so it gets this invocation's Blobs token.
 export default async (req: Request, context: Context) => {
-  if (!handle) {
-    const rt = runtime(context);
-    handle = createApp({ ...rt, geoCountry: () => context.geo?.country?.code ?? null });
-  }
-  return handle(req);
+  const app = createApp({ ...runtime(context), geoCountry: () => context.geo?.country?.code ?? null });
+  return app(req);
 };
 
 export const config: Config = {

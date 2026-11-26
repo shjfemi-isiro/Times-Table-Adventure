@@ -2,13 +2,8 @@ import type { Config, Context } from '@netlify/functions';
 import { createApp } from '../../src/app.mjs';
 import { runtime } from '../../src/runtime.mjs';
 
-let handle: ((req: Request) => Promise<Response>) | undefined;
-
 // Separate function so syncing gets its own, tighter rate limit (rule two of two).
-export default async (req: Request, context: Context) => {
-  handle ??= createApp(runtime(context));
-  return handle(req);
-};
+export default async (req: Request, context: Context) => createApp(runtime(context))(req);
 
 export const config: Config = {
   path: '/api/sync',

@@ -126,6 +126,10 @@ describe('sync, history and leagues', () => {
     const fam = await call(S.app, 'GET', '/api/leaderboards/family', { user: A });
     expect(fam.body.entries.map(e => e.familyLabel)).toContain('Zara');
     expect((await weeklyRollup({ db: S.db, stores: S.stores, now: nextMonday })).skipped).toBe(true);
+    // Another family cannot read this child's league, even knowing the child id.
+    const other = await call(S.app, 'GET', `/api/leaderboards?child=${ctx.childA}`, { user: B });
+    expect(other.body.optedIn).toBe(false);
+    expect(JSON.stringify(other.body)).not.toContain('amira');
   });
   it('removing a device stops it syncing', async () => {
     await call(S.app, 'DELETE', `/api/devices/${ctx.deviceId}`, { user: A });
@@ -156,7 +160,7 @@ describe('rights', () => {
     const latest = await S.stores.getBoard('latest.json');
     const world = await S.stores.getBoard(`${latest.week}/global-all-masters.json`);
     expect(world.entries.length).toBe(0);
-    expect(await S.stores.getBoard(`${latest.week}/league-of/${ctx.childA}.json`)).toBe(null);
+    expect(await S.stores.getBoard(`${latest.week}/league-of/${ctx.familyA}/${ctx.childA}.json`)).toBe(null);
     expect(S.clerkCalls.some(c => c[0] === 'delete' && c[1] === A)).toBe(true);
     expect((await call(S.app, 'GET', '/api/me', { user: A })).body.family).toBe(null);
   });

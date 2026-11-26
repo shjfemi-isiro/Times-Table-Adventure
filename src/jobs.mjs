@@ -146,7 +146,7 @@ export async function weeklyRollup({ db, stores, now = new Date() }) {
             await c.query(
               `INSERT INTO league_members (league_id, child_id, family_id, points, rank, outcome) VALUES ($1,$2,$3,$4,$5,$6)`,
               [id, m.child_id, m.family_id, m.points, m.rank, m.outcome]);
-            await stores.putBoard(`${week}/league-of/${m.child_id}.json`, leagueView(lg, m.child_id));
+            await stores.putBoard(`${week}/league-of/${m.family_id}/${m.child_id}.json`, leagueView(lg, m.child_id));
             if (m.outcome === 'promoted') {
               out.promoted++;
               const next = lg.tier + 1;

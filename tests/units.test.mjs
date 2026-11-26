@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { suggestGameNames, renderGameName, isGameNameCode, ADJECTIVES, ANIMALS } from '../src/gamenames.mjs';
 import { scoreSession, weekOf, SCORING } from '../src/scoring.mjs';
 import { buildLeagues, buildBoard, leagueView, stripRefs } from '../src/leagues.mjs';
-import { issueDeviceToken, verifyDeviceToken, requireRecentSignIn } from '../src/auth.mjs';
+import { issueDeviceToken, verifyDeviceToken, requireRecentSignIn, clerkSessionVerifier } from '../src/auth.mjs';
 import { childCreateSchema, syncSchema } from '../src/validate.mjs';
 import { rulesFor, canJoinLeagues } from '../src/policy.mjs';
 
@@ -139,5 +139,17 @@ describe('policy', () => {
     expect(canJoinLeagues({ age_band: 'little' }, { public_leagues: true, cloud_sync: true })).toBe(false);
     expect(canJoinLeagues({ age_band: 'masters' }, { public_leagues: true, cloud_sync: true })).toBe(true);
     expect(canJoinLeagues({ age_band: 'masters' }, { public_leagues: true })).toBe(false);
+  });
+});
+
+describe('parent sessions', () => {
+  it('only accept the Authorization header, never the session cookie (CSRF)', async () => {
+    let called = 0;
+    const clerk = { authenticateRequest: async () => { called++; return { isAuthenticated: true, toAuth: () => ({ userId: 'user_a' }) }; } };
+    const verify = clerkSessionVerifier(clerk, { authorizedParties: ['https://x.test'] });
+    expect(await verify(new Request('https://x.test/api/me', { headers: { cookie: '__session=abc' } }))).toBe(null);
+    expect(called).toBe(0);
+    expect(await verify(new Request('https://x.test/api/me', { headers: { authorization: 'Bearer abc' } }))).toEqual({ userId: 'user_a' });
+    expect(called).toBe(1);
   });
 });

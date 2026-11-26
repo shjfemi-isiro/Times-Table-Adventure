@@ -93,6 +93,10 @@ export function requireRecentSignIn(who) {
 // Real Clerk verification, used by the deployed functions.
 export function clerkSessionVerifier(clerk, { authorizedParties }) {
   return async req => {
+    // Only accept the session token sent in the Authorization header. Clerk would also
+    // accept its __session cookie, which other websites can make the browser send
+    // (cross-site request forgery). Our pages always send the header.
+    if (!/^Bearer\s+\S+/i.test(req.headers.get('authorization') || '')) return null;
     const state = await clerk.authenticateRequest(req, { authorizedParties, acceptsToken: 'session_token' });
     if (!state.isAuthenticated) return null;
     return state.toAuth();

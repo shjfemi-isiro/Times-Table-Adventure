@@ -32,7 +32,7 @@ export function blobStores(getStore, contextName = 'production') {
       const { blobs } = await boards.list();
       for (const b of blobs) {
         const [week, rest] = [b.key.split('/')[0], b.key.slice(b.key.indexOf('/') + 1)];
-        if (childIds.some(id => rest === `league-of/${id}.json`)) { await boards.delete(b.key); continue; }
+        if (rest.startsWith('league-of/') && childIds.some(id => rest.endsWith(`/${id}.json`))) { await boards.delete(b.key); continue; }
         if (!/^\d{4}-\d{2}-\d{2}$/.test(week) || rest === 'index.json') continue;
         const board = await boards.get(b.key, { type: 'json' });
         if (!board?.entries) continue;

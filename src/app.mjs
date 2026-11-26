@@ -133,7 +133,8 @@ export function createApp(deps) {
     for (const [k, col] of Object.entries(cols)) if (b[k] !== undefined) { vals.push(b[k]); sets.push(`${col} = $${vals.length}`); }
     if (!sets.length) throw new HttpError(422, 'invalid', 'Nothing to change.');
     const row = await db.withFamily(who.familyId, async c => {
-      const r = (await c.query(`UPDATE children SET ${sets.join(', ')}, updated_at = now() WHERE id = $1 RETURNING *`, vals)).rows[0];
+      vals.push(who.familyId);
+      const r = (await c.query(`UPDATE children SET ${sets.join(', ')}, updated_at = now() WHERE id = $1 AND family_id = $${vals.length} RETURNING *`, vals)).rows[0];
       if (!r) throw new HttpError(404, 'not_found', 'No such player.');
       if (r.display_mode === 'first_name' && !r.first_name) throw new HttpError(422, 'invalid', 'Add a first name or pick another option.');
       await audit(c, who.familyId, who.userId, 'child.updated', { child: r.id, fields: Object.keys(b) });
@@ -146,7 +147,7 @@ export function createApp(deps) {
     const who = await auth.parent(req);
     if (!UUID.test(params.id)) throw new HttpError(404, 'not_found', 'No such player.');
     await db.withFamily(who.familyId, async c => {
-      const r = await c.query('DELETE FROM children WHERE id = $1', [params.id]);
+      const r = await c.query('DELETE FROM children WHERE id = $1 AND family_id = $2', [params.id, who.familyId]);
       if (!r.rowCount) throw new HttpError(404, 'not_found', 'No such player.');
       await audit(c, who.familyId, who.userId, 'child.deleted', { child: params.id });
     });
@@ -164,7 +165,7 @@ export function createApp(deps) {
     if (b.granted && STRONG_CONSENT.has(b.purpose)) { requireRecentSignIn(who); method = 'reverified_session'; }
     const saved = await db.withFamily(who.familyId, async c => {
       if (b.childId) {
-        const ch = (await c.query('SELECT age_band FROM children WHERE id = $1', [b.childId])).rows[0];
+        const ch = (await c.query('SELECT age_band FROM children WHERE id = $1 AND family_id = $2', [b.childId, who.familyId])).rows[0];
         if (!ch) throw new HttpError(404, 'not_found', 'No such player.');
         if (b.purpose === 'public_leagues' && b.granted && !LEAGUE_BANDS.has(ch.age_band)) {
           throw new HttpError(422, 'not_for_age', 'Leagues start from age 6.');
@@ -216,7 +217,7 @@ export function createApp(deps) {
     const who = await auth.parent(req);
     if (!UUID.test(params.id)) throw new HttpError(404, 'not_found', 'No such device.');
     await db.withFamily(who.familyId, async c => {
-      const r = await c.query('UPDATE devices SET revoked_at = now() WHERE id = $1 AND revoked_at IS NULL', [params.id]);
+      const r = await c.query('UPDATE devices SET revoked_at = now() WHERE id = $1 AND family_id = $2 AND revoked_at IS NULL', [params.id, who.familyId]);
       if (!r.rowCount) throw new HttpError(404, 'not_found', 'No such device.');
       await audit(c, who.familyId, who.userId, 'device.removed', { device: params.id });
     });
@@ -254,7 +255,7 @@ export function createApp(deps) {
            FROM sessions WHERE family_id = $1 AND ($2::uuid IS NULL OR child_id = $2) AND ($3::timestamptz IS NULL OR started_at < $3)
           ORDER BY started_at DESC LIMIT $4`, [who.familyId, childId, before, limit])).rows;
       const facts = childId ? (await c.query(
-        'SELECT a, b, box, seen, correct, best_ms, mastered_at FROM fact_progress WHERE child_id = $1 ORDER BY a, b', [childId])).rows : undefined;
+        'SELECT a, b, box, seen, correct, best_ms, mastered_at FROM fact_progress WHERE child_id = $1 AND family_id = $2 ORDER BY a, b', [childId, who.familyId])).rows : undefined;
       const weeks = (await c.query(
         `SELECT child_id, week, points, facts_improved, facts_mastered, sessions FROM weekly_points
           WHERE family_id = $1 AND ($2::uuid IS NULL OR child_id = $2) ORDER BY week DESC LIMIT 12`, [who.familyId, childId])).rows;
@@ -265,9 +266,13 @@ export function createApp(deps) {
     });
     // Rounds played since the last sync are shown as "on the way".
     const pending = [];
-    for (const k of await stores.listQueued(`${who.familyId}/`)) {
-      const v = await stores.getQueued(k);
-      if (v && (!childId || v.session.childId === childId)) pending.push({ id: v.session.id, childId: v.session.childId, startedAt: v.session.startedAt, bridge: v.session.bridge, answered: v.session.items.length, pending: true });
+    try {
+      for (const k of await stores.listQueued(`${who.familyId}/`)) {
+        const v = await stores.getQueued(k);
+        if (v && (!childId || v.session.childId === childId)) pending.push({ id: v.session.id, childId: v.session.childId, startedAt: v.session.startedAt, bridge: v.session.bridge, answered: v.session.items.length, pending: true });
+      }
+    } catch (e) {
+      log.warn?.('pending rounds unavailable', e.message); // history still loads
     }
     return json({ ...out, pending, nextBefore: out.sessions.length === limit ? out.sessions.at(-1).started_at : null });
   });
@@ -280,8 +285,9 @@ export function createApp(deps) {
     const scope = url.searchParams.get('scope') || 'league';
     const latest = await stores.getBoard('latest.json');
     if (!latest) return json({ ready: false, message: 'The first leagues start next Monday.' });
-    // The league view is keyed by child id, and only exists if the parent opted in.
-    const mine = await stores.getBoard(`${latest.week}/league-of/${childId}.json`);
+    // The league view is stored under the caller's own family id, so a child id from
+    // another family finds nothing. It only exists if the parent opted in.
+    const mine = await stores.getBoard(`${latest.week}/league-of/${who.familyId}/${childId}.json`);
     if (scope === 'league') return json({ ready: true, week: latest.week, league: mine ? stripRefs(mine) : null, optedIn: !!mine });
     if (!mine) return json({ ready: true, week: latest.week, optedIn: false, entries: [] });
     const band = url.searchParams.get('band');
