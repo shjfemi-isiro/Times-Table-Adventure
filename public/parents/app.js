@@ -180,7 +180,14 @@ async function start() {
   $('#env-tag').textContent = document.body.dataset.env === 'production' ? '' : `Environment: ${document.body.dataset.env}`;
   const wait = () => new Promise(r => { const t = setInterval(() => { if (window.Clerk) { clearInterval(t); r(); } }, 50); });
   await wait();
-  await window.Clerk.load({ ui: { ClerkUI: window.__internal_ClerkUICtor }, appearance: { variables: { colorPrimary: '#1A5FCC', fontFamily: 'Nunito, system-ui, sans-serif', borderRadius: '12px' } } });
+  await window.Clerk.load({
+    ui: { ClerkUI: window.__internal_ClerkUICtor },
+    appearance: {
+      variables: { colorPrimary: '#1A5FCC', fontFamily: 'Nunito, system-ui, sans-serif', borderRadius: '12px' },
+      // Clerk's card is 400px wide by default; let it shrink to fit a phone.
+      elements: { rootBox: { width: '100%' }, cardBox: { width: '100%', maxWidth: '100%' }, card: { width: 'auto' } },
+    },
+  });
   if (!window.Clerk.user) {
     // Staging runs Clerk in waitlist mode: testers request access, a grown-up approves them.
     if (location.hash.startsWith('#waitlist')) window.Clerk.mountWaitlist($('#signin'), { afterJoinWaitlistUrl: '/parents/' });

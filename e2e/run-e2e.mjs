@@ -31,7 +31,8 @@ try {
     if (a11y) {
       await page.evaluate(axeSource); // evaluated via DevTools, so the page CSP stays on
       const r = await page.evaluate(async () => (await window.axe.run(document, { resultTypes: ['violations'] })).violations
-        .filter(v => ['serious', 'critical'].includes(v.impact)).map(v => `${v.id} (${v.nodes.length})`));
+        .filter(v => ['serious', 'critical'].includes(v.impact))
+        .map(v => `${v.id} (${v.nodes.length}): ` + v.nodes.slice(0, 3).map(n => `${n.target.join(' ')} ${(n.any[0]?.message || '').slice(0, 160)}`).join(' | ')));
       if (r.length) failures.push(`${path}: accessibility ${r.join(', ')}`);
     }
     await page.close();
