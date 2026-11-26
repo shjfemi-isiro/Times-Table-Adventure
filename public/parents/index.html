@@ -8,7 +8,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/parents/parents.css">
-<script async crossorigin="anonymous" data-clerk-publishable-key="%%CLERK_PUBLISHABLE_KEY%%" src="https://%%CLERK_FRONTEND_API%%/npm/@clerk/clerk-js@6/dist/clerk.browser.js"></script>
+<!-- Clerk v6: the UI bundle must load before clerk-js -->
+<script defer crossorigin="anonymous" src="https://%%CLERK_FRONTEND_API%%/npm/@clerk/ui@1/dist/ui.browser.js"></script>
+<script defer crossorigin="anonymous" data-clerk-publishable-key="%%CLERK_PUBLISHABLE_KEY%%" src="https://%%CLERK_FRONTEND_API%%/npm/@clerk/clerk-js@6/dist/clerk.browser.js"></script>
 <script type="module" src="/parents/app.js"></script>
 </head>
 <body data-env="%%APP_ENV%%">

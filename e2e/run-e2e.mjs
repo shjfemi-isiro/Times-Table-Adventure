@@ -17,9 +17,15 @@ try {
     const errors = [];
     page.on('console', m => { if (m.type() === 'error' && /Content Security Policy|Refused to/i.test(m.text())) errors.push(m.text()); });
     page.on('pageerror', e => errors.push(e.message));
-    const res = await page.goto(base + path, { waitUntil: 'networkidle' });
+    // Clerk's anti-bot service keeps polling, so 'networkidle' never comes: wait for load, then settle.
+    const res = await page.goto(base + path, { waitUntil: 'load', timeout: 45_000 });
+    await page.waitForTimeout(4000);
     if (!res || res.status() !== 200) failures.push(`${path}: status ${res?.status()}`);
     if (errors.length) failures.push(`${path}: ${errors.slice(0, 3).join(' | ')}`);
+    if (path === '/parents/') {
+      const err = await page.evaluate(() => document.querySelector('.msg.err')?.textContent || '');
+      if (err) failures.push(`${path}: page shows an error: ${err}`);
+    }
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
     if (overflow) failures.push(`${path}: horizontal scroll at phone width`);
     if (a11y) {
