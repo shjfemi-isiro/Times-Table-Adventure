@@ -251,7 +251,7 @@ export function createApp(deps) {
     const out = await db.withFamily(who.familyId, async c => {
       const rows = (await c.query(
         `SELECT id, child_id, started_at, ended_at, bridge, age_band, answered, first_try_correct, stars,
-                learning_points, facts_improved, facts_mastered
+                learning_points, facts_improved, facts_mastered, flagged
            FROM sessions WHERE family_id = $1 AND ($2::uuid IS NULL OR child_id = $2) AND ($3::timestamptz IS NULL OR started_at < $3)
           ORDER BY started_at DESC LIMIT $4`, [who.familyId, childId, before, limit])).rows;
       const facts = childId ? (await c.query(

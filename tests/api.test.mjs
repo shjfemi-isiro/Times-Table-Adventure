@@ -131,10 +131,19 @@ describe('sync, history and leagues', () => {
     expect(other.body.optedIn).toBe(false);
     expect(JSON.stringify(other.body)).not.toContain('amira');
   });
-  it('removing a device stops it syncing', async () => {
+  it('removing a device stops it syncing but keeps rounds it already sent', async () => {
+    const played = round(ctx.childA, new Date(Date.now() - 3600_000).toISOString(), [{ a: 3, b: 4, ok: true, firstTry: true, ms: 2100, help: 0 }]);
+    expect((await call(S.app, 'POST', '/api/sync', { device: ctx.device, body: { sessions: [played] } })).status).toBe(202);
+    await new Promise(r => setTimeout(r, 5));
     await call(S.app, 'DELETE', `/api/devices/${ctx.deviceId}`, { user: A });
     const r = await call(S.app, 'POST', '/api/sync', { device: ctx.device, body: { sessions: [round(ctx.childA, new Date().toISOString(), [{ a: 2, b: 5, ok: true, firstTry: true, ms: 900, help: 0 }])] } });
     expect(r.body.error).toBe('device_revoked');
+    // Something slipped into the queue for that device after it was removed: not saved.
+    await new Promise(r => setTimeout(r, 5));
+    const famA = (await call(S.app, 'GET', '/api/me', { user: A })).body.family.id;
+    await S.stores.enqueue(famA, ctx.deviceId, round(ctx.childA, new Date().toISOString(), [{ a: 2, b: 6, ok: true, firstTry: true, ms: 900, help: 0 }]));
+    const stats = await flushQueue({ db: S.db, stores: S.stores });
+    expect(stats).toMatchObject({ saved: 1, dropped: 1 });
   });
 });
 
@@ -144,7 +153,7 @@ describe('rights', () => {
     expect(r.status, JSON.stringify(r.body)).toBe(200);
     expect(r.headers.get('content-disposition')).toContain('attachment');
     expect(r.body.children.length).toBe(2);
-    expect(r.body.sessions.length).toBe(1);
+    expect(r.body.sessions.length).toBe(2);
     expect(r.body.consents.length).toBeGreaterThanOrEqual(3);
   });
   it('complaints are logged with a 30-day acknowledgement date', async () => {

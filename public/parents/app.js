@@ -139,10 +139,11 @@ function historyCard(me) {
     if (!sel.value) return;
     const r = await api(`/api/history?child=${sel.value}&limit=20`);
     const mastered = (r.facts || []).filter(f => f.mastered_at).length;
+    const practising = (r.facts || []).length - mastered;
     out.replaceChildren(
-      h('p', {}, `${mastered} facts known. ${r.pending.length ? r.pending.length + ' rounds still on their way.' : ''}`),
+      h('p', {}, `${mastered} facts known, ${practising} being practised. ${r.pending.length ? r.pending.length + ' rounds still on their way.' : ''}`),
       h('table', {}, h('thead', {}, h('tr', {}, h('th', {}, 'When'), h('th', {}, 'Bridge'), h('th', {}, 'Right first time'), h('th', {}, 'Learning points'))),
-        h('tbody', {}, ...r.sessions.map(s => h('tr', {}, h('td', {}, new Date(s.started_at).toLocaleString()), h('td', {}, s.bridge), h('td', {}, `${s.first_try_correct} of ${s.answered}`), h('td', {}, s.learning_points))))));
+        h('tbody', {}, ...r.sessions.map(s => h('tr', {}, h('td', {}, new Date(s.started_at).toLocaleString()), h('td', {}, s.bridge), h('td', {}, `${s.first_try_correct} of ${s.answered}`), h('td', {}, s.flagged ? 'Not counted (answers too fast)' : String(s.learning_points)))))));
   };
   sel.addEventListener('change', load); load();
   return h('section', { class: 'card' }, h('h2', {}, 'Game history'), sel, out);

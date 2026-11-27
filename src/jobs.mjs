@@ -42,7 +42,10 @@ export async function flushQueue({ db, stores, now = new Date(), limit = 2000, l
           const s = it.session;
           const child = kids.get(s.childId);
           const dev = it.deviceId ? devices.get(it.deviceId) : null;
-          if (!child || !familySync || (it.deviceId && (!dev || dev.revoked_at))) { stats.dropped++; continue; }
+          // A device removed by the parent can't send anything new (sync refuses its token),
+          // but rounds it uploaded before it was removed are the child's real play, so they are kept.
+          const revokedFirst = dev?.revoked_at && Date.parse(it.queuedAt) >= new Date(dev.revoked_at).getTime();
+          if (!child || !familySync || (it.deviceId && (!dev || revokedFirst))) { stats.dropped++; continue; }
           const dup = await c.query('SELECT 1 FROM sessions WHERE id = $1', [s.id]);
           if (dup.rowCount) { stats.duplicate++; continue; }
 
