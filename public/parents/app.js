@@ -13,11 +13,19 @@ const h = (tag, attrs = {}, ...kids) => {
 
 const BANDS = { little: 'Ages 3 to 5', builders: 'Ages 6 to 7', masters: 'Ages 8 to 10' };
 const PURPOSES = [
-  ['cloud_sync', 'Back up progress', 'Saves rounds to our servers in London so progress survives a lost device.'],
+  ['cloud_sync', 'Back up progress', 'Saves rounds so progress survives a lost device. Stored in London; held in Frankfurt until saved; processed by Netlify in the US.'],
   ['family_board', 'Family board', 'Shows your players to each other. Can use first names; never public.'],
   ['public_leagues', 'Weekly leagues', 'Ages 6+. Shows only the game name and avatar, ranked by facts learned. Needs backup on.'],
   ['product_emails', 'Product emails', 'Occasional news for grown-ups. Never sent to children.'],
 ];
+const BRIDGES = { tower: 'Tower Bridge', 'golden-gate': 'Golden Gate', london: 'London Bridge', 'third-mainland': 'Third Mainland Bridge', '6th-october': '6th October Bridge' };
+const COMPLAINT_TYPES = [['privacy', 'Privacy or my data'], ['child_safety', 'Child safety'], ['accessibility', 'Accessibility'], ['other', 'Something else']];
+const COUNTRIES = [['GB', 'United Kingdom'], ['NG', 'Nigeria'], ['EG', 'Egypt'], ['US', 'United States'], ['IE', 'Ireland'], ['FR', 'France'], ['DE', 'Germany']];
+const titleCase = s => String(s || '').replace(/(^|[-\s])(\p{L})/gu, (m, sep, c) => sep.replace('-', ' ') + c.toUpperCase());
+const countryName = code => { try { return new Intl.DisplayNames(['en'], { type: 'region' }).of(code); } catch { return code; } };
+
+// Runs a button's action and shows any error instead of failing silently.
+const safely = fn => async ev => { try { await fn(ev); } catch (e) { flash(e.message, true); } };
 
 async function api(path, opts = {}) {
   const token = await window.Clerk?.session?.getToken();
@@ -56,9 +64,10 @@ async function render() {
 }
 
 function renderSetup(me) {
+  const suggested = /^[A-Z]{2}$/.test(me.suggestedCountry || '') ? me.suggestedCountry : 'GB';
+  const list = COUNTRIES.some(([v]) => v === suggested) ? COUNTRIES : [[suggested, countryName(suggested)], ...COUNTRIES];
   const sel = h('select', { id: 'country', 'aria-label': 'Country' },
-    ...[['GB', 'United Kingdom'], ['NG', 'Nigeria'], ['EG', 'Egypt'], ['US', 'United States'], ['IE', 'Ireland'], ['FR', 'France'], ['DE', 'Germany'], ['OTHER', 'Somewhere else']]
-      .map(([v, t]) => h('option', { value: v, selected: v === (me.suggestedCountry || 'GB') }, t)));
+    ...[...list, ['OTHER', 'Somewhere else']].map(([v, t]) => h('option', { value: v, selected: v === suggested }, t)));
   $('#main').replaceChildren(h('section', { class: 'card' },
     h('h2', {}, 'Where do you live?'),
     h('p', {}, 'This decides which privacy rules apply to your family. You can change it later.'),
@@ -71,11 +80,11 @@ function renderSetup(me) {
 function playersCard(me) {
   const list = h('div', { class: 'kids' }, ...me.children.map(k => h('div', { class: 'kid' },
     h('b', {}, k.familyLabel || k.gameName), h('div', {}, h('span', { class: 'pill' }, BANDS[k.ageBand])),
-    h('div', {}, 'Game name: ', k.gameName), h('div', {}, 'Avatar: ', k.avatarId),
-    h('button', { class: 'ghost', onclick: async () => {
+    h('div', {}, 'Game name: ', k.gameName), h('div', {}, 'Avatar: ', titleCase(k.avatarId)),
+    h('button', { class: 'ghost', onclick: safely(async () => {
       if (!confirm(`Remove ${k.familyLabel || k.gameName} and all their progress?`)) return;
       await api(`/api/children/${k.id}`, { method: 'DELETE' }); render();
-    } }, 'Remove'))));
+    }) }, 'Remove'))));
   return h('section', { class: 'card' }, h('h2', {}, 'Players'), list, addChildForm());
 }
 
@@ -91,10 +100,10 @@ function addChildForm() {
   const reroll = async () => {
     const r = await api('/api/game-names?n=4'); names = r.suggestions; avatars = r.avatars;
     nameSel.replaceChildren(...names.map(n => h('option', { value: n.code }, n.name)));
-    if (!avatarSel.options.length) avatarSel.replaceChildren(...avatars.map(a => h('option', { value: a }, a)));
+    if (!avatarSel.options.length) avatarSel.replaceChildren(...avatars.map(a => h('option', { value: a }, titleCase(a))));
   };
-  reroll();
-  box.append(avatarSel, nameSel, h('button', { class: 'ghost', onclick: reroll }, 'New names'), bandSel, modeSel, first,
+  reroll().catch(e => flash(e.message, true));
+  box.append(avatarSel, nameSel, h('button', { class: 'ghost', onclick: safely(reroll) }, 'New names'), bandSel, modeSel, first,
     h('button', { onclick: async () => {
       try {
         await api('/api/children', { method: 'POST', body: { avatarId: avatarSel.value, gameNameCode: nameSel.value, ageBand: bandSel.value, displayMode: modeSel.value, ...(first.value.trim() ? { firstName: first.value.trim() } : {}) } });
@@ -121,7 +130,7 @@ function devicesCard(me) {
   return h('section', { class: 'card' }, h('h2', {}, 'Play devices'),
     h('p', {}, 'Pair a family tablet so it can back up rounds without you staying signed in.'),
     h('table', {}, h('tbody', {}, ...me.devices.map(d => h('tr', {}, h('td', {}, d.label), h('td', {}, d.last_sync_at ? `Last backup ${new Date(d.last_sync_at).toLocaleString()}` : 'Not backed up yet'),
-      h('td', {}, h('button', { class: 'ghost', onclick: async () => { await api(`/api/devices/${d.id}`, { method: 'DELETE' }); render(); } }, 'Remove')))))),
+      h('td', {}, h('button', { class: 'ghost', onclick: safely(async () => { await api(`/api/devices/${d.id}`, { method: 'DELETE' }); flash(`${d.label} removed.`); render(); }) }, 'Remove')))))),
     h('button', { onclick: async () => {
       const label = prompt('Name this device', 'Family tablet'); if (!label) return;
       try {
@@ -143,36 +152,39 @@ function historyCard(me) {
     out.replaceChildren(
       h('p', {}, `${mastered} facts known, ${practising} being practised. ${r.pending.length ? r.pending.length + ' rounds still on their way.' : ''}`),
       h('table', {}, h('thead', {}, h('tr', {}, h('th', {}, 'When'), h('th', {}, 'Bridge'), h('th', {}, 'Right first time'), h('th', {}, 'Learning points'))),
-        h('tbody', {}, ...r.sessions.map(s => h('tr', {}, h('td', {}, new Date(s.started_at).toLocaleString()), h('td', {}, s.bridge), h('td', {}, `${s.first_try_correct} of ${s.answered}`), h('td', {}, s.flagged ? 'Not counted (answers too fast)' : String(s.learning_points)))))));
+        h('tbody', {}, ...r.sessions.map(s => h('tr', {}, h('td', {}, new Date(s.started_at).toLocaleString()), h('td', {}, BRIDGES[s.bridge] || s.bridge), h('td', {}, `${s.first_try_correct} of ${s.answered}`), h('td', {}, s.flagged ? 'Not counted (answers too fast)' : String(s.learning_points)))))));
   };
-  sel.addEventListener('change', load); load();
+  const show = () => load().catch(e => out.replaceChildren(h('div', { class: 'msg err' }, e.message)));
+  sel.addEventListener('change', show); show();
   return h('section', { class: 'card' }, h('h2', {}, 'Game history'), sel, out);
 }
 
 function boardsCard(me) {
   const out = h('div');
   api('/api/leaderboards/family').then(r => out.replaceChildren(h('table', {}, h('tbody', {}, ...r.entries.map(e =>
-    h('tr', {}, h('td', {}, `#${e.rank}`), h('td', {}, e.familyLabel || e.gameName), h('td', {}, `${e.points} points this week`))))))).catch(() => {});
+    h('tr', {}, h('td', {}, `#${e.rank}`), h('td', {}, e.familyLabel || e.gameName), h('td', {}, `${e.points} points this week`))))))).catch(e => out.replaceChildren(h('div', { class: 'msg err' }, e.message)));
   return h('section', { class: 'card' }, h('h2', {}, 'Family board'), h('p', {}, 'Points come from facts getting faster or becoming known.'), out);
 }
 
 function rightsCard(me) {
   const msg = h('textarea', { rows: 3, style: 'width:100%', maxlength: 2000, 'aria-label': 'Complaint' });
+  const kind = h('select', { 'aria-label': 'What is it about?' }, ...COMPLAINT_TYPES.map(([v, t]) => h('option', { value: v }, t)));
+  const info = me.complaints || { ackDays: 30, regulator: 'the data protection regulator where you live' };
   return h('section', { class: 'card' }, h('h2', {}, 'Your data'),
     h('div', { class: 'row' },
-      h('button', { class: 'ghost', onclick: async () => {
+      h('button', { class: 'ghost', onclick: safely(async () => {
         const data = await api('/api/export');
         const a = h('a', { href: URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })), download: 'times-table-adventure-data.json' });
         a.click();
-      } }, 'Download everything'),
+      }) }, 'Download everything'),
       h('button', { class: 'danger', onclick: async () => {
         if (!confirm('Delete your family, every player and all progress? This cannot be undone.')) return;
         try { await api('/api/account', { method: 'DELETE' }); await window.Clerk.signOut(); location.href = '/'; } catch (e) { flash(e.message, true); }
       } }, 'Delete account')),
     h('h2', { style: 'margin-top:16px' }, 'Make a complaint'),
-    h('p', {}, 'We acknowledge within 30 days. You can also contact your regulator, such as the ICO in the UK.'),
-    msg, h('button', { onclick: async () => {
-      try { const r = await api('/api/complaints', { method: 'POST', body: { category: 'privacy', message: msg.value } }); msg.value = ''; flash(`Received. We will reply by ${r.acknowledgeBy}.`); }
+    h('p', {}, `We acknowledge within ${info.ackDays} days. You can also contact ${info.regulator}.`),
+    kind, msg, h('button', { onclick: async () => {
+      try { const r = await api('/api/complaints', { method: 'POST', body: { category: kind.value, message: msg.value } }); msg.value = ''; flash(`Received. We will reply by ${r.acknowledgeBy}.`); }
       catch (e) { flash(e.message, true); }
     } }, 'Send'));
 }

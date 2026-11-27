@@ -1,13 +1,15 @@
 import { boardRef } from './leagues.mjs';
+import { BLOBS_REGION } from './policy.mjs';
 
 // Sync queue and published boards live in Netlify Blobs, so syncing a round never
 // wakes the database. Store names carry the deploy context so previews and
-// production never share data.
-export function blobStores(getStore, contextName = 'production') {
+// production never share data. Every store is opened in the same region: a call
+// without it would read Netlify's default region (Ohio) and see nothing.
+export function blobStores(getStore, contextName = 'production', region = BLOBS_REGION) {
   const suffix = contextName === 'production' ? 'prod' : contextName.replace(/[^a-z0-9-]/gi, '-').slice(0, 20);
-  const queue = getStore({ name: `sync-queue-${suffix}`, consistency: 'strong' });
-  const boards = getStore({ name: `boards-${suffix}` });
-  const revoked = getStore({ name: `revoked-devices-${suffix}`, consistency: 'strong' });
+  const queue = getStore({ name: `sync-queue-${suffix}`, consistency: 'strong', region });
+  const boards = getStore({ name: `boards-${suffix}`, region });
+  const revoked = getStore({ name: `revoked-devices-${suffix}`, consistency: 'strong', region });
   return {
     async enqueue(familyId, deviceId, session) {
       await queue.setJSON(`${familyId}/${session.id}`, { familyId, deviceId, session, queuedAt: new Date().toISOString() });

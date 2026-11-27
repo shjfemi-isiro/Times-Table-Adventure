@@ -99,6 +99,16 @@ export async function flushQueue({ db, stores, now = new Date(), limit = 2000, l
   return stats;
 }
 
+// ---- Device removals: the database is the record; the Blobs copy is what sync
+// checks. Re-assert every removal so a failed write (or a region move) can't
+// bring a removed tablet back.
+export async function reconcileRevocations({ db, stores }) {
+  const ids = await db.withSystem(async c => (await c.query('SELECT id FROM devices WHERE revoked_at IS NOT NULL')).rows.map(r => r.id));
+  let fixed = 0;
+  for (const id of ids) if (!(await stores.isRevoked(id))) { await stores.revoke(id); fixed++; }
+  return { revoked: ids.length, fixed };
+}
+
 // ---- Weekly rollup: leagues, boards, rewards. Runs Monday 00:20 UTC.
 export async function weeklyRollup({ db, stores, now = new Date() }) {
   const thisWeek = weekOf(now);

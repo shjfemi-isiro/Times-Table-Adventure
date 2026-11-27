@@ -1,6 +1,6 @@
 // Rules that depend on where the family lives. Country is chosen by the parent in
 // onboarding; Netlify's geo header only pre-selects it.
-export const POLICY_VERSION = '2026-11-22';
+export const POLICY_VERSION = '2026-11-27';
 
 const RULES_BY_COUNTRY = { GB: 'uk', US: 'us', NG: 'ng', EG: 'eg' };
 const EU = new Set(['AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IE','IT','LV','LT','LU','MT','NL','PL','PT','RO','SK','SI','ES','SE','IS','LI','NO']);
@@ -31,6 +31,35 @@ export const RETENTION = {
 };
 
 export const COMPLAINT_ACK_DAYS = 30;
+
+// Where data lives. The database is Neon in London (aws-eu-west-2). Netlify Blobs
+// (sync queue, published boards, device removals) can't be in London, so it uses
+// Frankfurt. Netlify Functions run in Ohio on the Free plan (region choice is Pro).
+export const BLOBS_REGION = 'eu-central-1';
+
+// Product limits, used by the API and shown in its messages.
+export const LIMITS = {
+  playersPerFamily: 6,
+  devicesPerFamily: 5,
+  openComplaints: 5,
+  clockSkewMinutes: 10,          // rounds dated further ahead than this are refused
+  syncBodyBytes: 96 * 1024,
+  complaintBodyBytes: 8 * 1024,
+  historyPageMax: 50,
+  historyPageDefault: 20,
+};
+
+// Data protection regulator by the family's rules (shown with complaints).
+const REGULATORS = {
+  uk: "the Information Commissioner's Office (ICO)",
+  ng: 'the Nigeria Data Protection Commission (NDPC)',
+  eg: 'the Personal Data Protection Centre (PDPC)',
+  us: 'the Federal Trade Commission (FTC)',
+  eu: 'the data protection authority in your country',
+};
+export function regulatorFor(rules) {
+  return REGULATORS[rules] || 'the data protection regulator where you live';
+}
 
 export function canJoinLeagues(child, consentState) {
   return LEAGUE_BANDS.has(child.age_band) && consentState?.public_leagues === true && consentState?.cloud_sync === true;

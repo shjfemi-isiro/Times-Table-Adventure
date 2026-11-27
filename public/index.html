@@ -452,15 +452,17 @@
     min-width:88px;
     min-height:58px;
     border-radius:14px;
-    border:3px solid var(--meadow);
+    border:3px solid #9FB3CC;
     display:flex;align-items:center;justify-content:center;
     font-family:'Baloo 2';
     font-size:1.8rem;
     font-weight:700;
-    color:var(--meadow-dark);
+    color:var(--ink);
     padding:0 14px;
-    background:#EAFBF3;
+    background:#FFFFFF;
   }
+  .answer-box.ok{border-color:var(--meadow); color:var(--meadow-dark); background:#EAFBF3;}
+  .answer-box.bad{border-color:var(--danger); color:#B0213A; background:#FDECEF; text-decoration:line-through;}
   .feedback-line{
     text-align:center;
     min-height:26px;
@@ -1242,6 +1244,7 @@ function nextQuestion(){
   document.getElementById('questionText').textContent = session.current.table + ' × ' + session.current.n + ' = ?';
   speak(session.current.table + ' times ' + session.current.n + ' equals what?');
   document.getElementById('answerBox').innerHTML = '&nbsp;';
+  document.getElementById('answerBox').className = 'answer-box';
   document.getElementById('feedbackLine').textContent = '';
   document.getElementById('feedbackLine').className = 'feedback-line';
   document.getElementById('dashQNum').textContent = session.qIndex;
@@ -1354,6 +1357,7 @@ function submitAnswer(timedOut){
     profile.totalPoints += pts;
     fb.textContent = 'That\'s correct! +' + pts + ' points';
     fb.className = 'feedback-line ok';
+    document.getElementById('answerBox').className = 'answer-box ok';
     chime('correct'); speak('That\'s correct!');
     document.getElementById('vehicleWrap').classList.add('bounce');
     setTimeout(function(){ document.getElementById('vehicleWrap').classList.remove('bounce'); }, 500);
@@ -1364,9 +1368,11 @@ function submitAnswer(timedOut){
     animateCrossing(q, true, goNext);
   } else {
     session.streak = 0;
-    fb.textContent = timedOut ? ("Time's up! The answer was " + q.answer) : ('Try again! The answer was ' + q.answer);
+    var fact = q.table + ' × ' + q.n + ' = ' + q.answer;
+    fb.textContent = timedOut ? ("Time's up! " + fact) : ('Not quite! ' + fact);
     fb.className = 'feedback-line bad';
-    chime('wrong'); speak('Try again!');
+    if(!timedOut) document.getElementById('answerBox').className = 'answer-box bad';
+    chime('wrong'); speak(q.table + ' times ' + q.n + ' is ' + q.answer);
     animateCrossing(q, false, goNext);
   }
   saveAllProfiles(allProfiles);

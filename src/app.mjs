@@ -3,12 +3,22 @@ import { HttpError, json, errorResponse, readJson, parseOrThrow } from './http.m
 import { issueDeviceToken, requireRecentSignIn } from './auth.mjs';
 import { renderGameName, suggestGameNames } from './gamenames.mjs';
 import { AVATARS, CAR_COLORS } from './avatars.mjs';
-import { POLICY_VERSION, rulesFor, STRONG_CONSENT, LEAGUE_BANDS, COMPLAINT_ACK_DAYS, RETENTION } from './policy.mjs';
+import { POLICY_VERSION, rulesFor, regulatorFor, STRONG_CONSENT, LEAGUE_BANDS, COMPLAINT_ACK_DAYS, RETENTION, LIMITS } from './policy.mjs';
+import { weekOf } from './scoring.mjs';
 import { familySchema, childCreateSchema, childUpdateSchema, consentSchema, deviceSchema, syncSchema, complaintSchema } from './validate.mjs';
 import { stripRefs } from './leagues.mjs';
 import { eraseFamily } from './jobs.mjs';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Whole number from a query string, clamped; anything else falls back to the default.
+function intParam(value, { min, max, fallback }) {
+  const n = Number.parseInt(value ?? '', 10);
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
+}
+
+// What the grown-ups' page needs to explain complaints for this family.
+const complaintsInfo = rules => ({ ackDays: COMPLAINT_ACK_DAYS, regulator: regulatorFor(rules) });
 
 function childView(r) {
   return {
@@ -65,9 +75,9 @@ export function createApp(deps) {
     return json(body);
   });
 
-  // ---- Reference data (no auth, CDN-cacheable, no database) ---------------------
+  // ---- Reference data (no auth, no database; fresh suggestions each call) --------
   on('GET', '/api/game-names', async ({ url }) => {
-    const n = Math.min(6, Math.max(1, Number(url.searchParams.get('n') || 3)));
+    const n = intParam(url.searchParams.get('n'), { min: 1, max: 6, fallback: 3 });
     return json({ suggestions: suggestGameNames(n), avatars: AVATARS, carColors: CAR_COLORS }, 200, { 'cache-control': 'no-store' });
   });
 
@@ -79,7 +89,7 @@ export function createApp(deps) {
       const f = (await c.query('SELECT id, country, rules, created_at FROM families WHERE id = $1', [who.familyId])).rows[0];
       const kids = (await c.query('SELECT * FROM children WHERE family_id = $1 ORDER BY created_at', [who.familyId])).rows.map(childView);
       const devices = (await c.query('SELECT id, label, created_at, last_sync_at FROM devices WHERE family_id = $1 AND revoked_at IS NULL ORDER BY created_at', [who.familyId])).rows;
-      return json({ family: f, role: who.family.role, children: kids, consents: await consentMap(c, who.familyId), devices, policyVersion: POLICY_VERSION });
+      return json({ family: f, role: who.family.role, children: kids, consents: await consentMap(c, who.familyId), devices, policyVersion: POLICY_VERSION, complaints: complaintsInfo(f.rules), limits: { players: LIMITS.playersPerFamily, devices: LIMITS.devicesPerFamily } });
     });
   });
 
@@ -113,7 +123,7 @@ export function createApp(deps) {
     const b = parseOrThrow(childCreateSchema, await readJson(req));
     const row = await db.withFamily(who.familyId, async c => {
       const n = (await c.query('SELECT count(*)::int AS n FROM children WHERE family_id = $1', [who.familyId])).rows[0].n;
-      if (n >= 6) throw new HttpError(409, 'too_many_children', 'A family can have up to 6 players.');
+      if (n >= LIMITS.playersPerFamily) throw new HttpError(409, 'too_many_children', `A family can have up to ${LIMITS.playersPerFamily} players.`);
       const r = (await c.query(
         `INSERT INTO children (family_id, avatar_id, age_band, game_name_code, display_mode, first_name, car_color)
          VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
@@ -204,7 +214,7 @@ export function createApp(deps) {
     const b = parseOrThrow(deviceSchema, await readJson(req));
     const dev = await db.withFamily(who.familyId, async c => {
       const n = (await c.query('SELECT count(*)::int AS n FROM devices WHERE family_id = $1 AND revoked_at IS NULL', [who.familyId])).rows[0].n;
-      if (n >= 5) throw new HttpError(409, 'too_many_devices', 'Remove a device first (up to 5).');
+      if (n >= LIMITS.devicesPerFamily) throw new HttpError(409, 'too_many_devices', `Remove a device first (up to ${LIMITS.devicesPerFamily}).`);
       const r = (await c.query('INSERT INTO devices (family_id, label) VALUES ($1,$2) RETURNING id, label, created_at', [who.familyId, b.label])).rows[0];
       await audit(c, who.familyId, who.userId, 'device.paired', { device: r.id });
       return r;
@@ -228,12 +238,12 @@ export function createApp(deps) {
   // ---- Sync (Blobs only: the database is not woken) ------------------------------
   on('POST', '/api/sync', async ({ req }) => {
     const who = await auth.parentOrDevice(req);
-    const b = parseOrThrow(syncSchema, await readJson(req, 96 * 1024));
+    const b = parseOrThrow(syncSchema, await readJson(req, LIMITS.syncBodyBytes));
     const now = Date.now();
     const accepted = [], rejected = [];
     for (const s of b.sessions) {
       const start = Date.parse(s.startedAt);
-      if (start > now + 10 * 60_000 || start < now - RETENTION.queueMaxAgeDays * 86400_000) { rejected.push({ id: s.id, reason: 'out_of_range' }); continue; }
+      if (start > now + LIMITS.clockSkewMinutes * 60_000 || start < now - RETENTION.queueMaxAgeDays * 86400_000) { rejected.push({ id: s.id, reason: 'out_of_range' }); continue; }
       await stores.enqueue(who.familyId, who.kind === 'device' ? who.deviceId : null, s);
       accepted.push(s.id);
     }
@@ -245,7 +255,7 @@ export function createApp(deps) {
     const who = await auth.parent(req);
     const childId = url.searchParams.get('child');
     const before = url.searchParams.get('before');
-    const limit = Math.min(50, Math.max(1, Number(url.searchParams.get('limit') || 20)));
+    const limit = intParam(url.searchParams.get('limit'), { min: 1, max: LIMITS.historyPageMax, fallback: LIMITS.historyPageDefault });
     if (childId && !UUID.test(childId)) throw new HttpError(422, 'invalid', 'Bad player id.');
     if (before && Number.isNaN(Date.parse(before))) throw new HttpError(422, 'invalid', 'Bad date.');
     const out = await db.withFamily(who.familyId, async c => {
@@ -283,6 +293,7 @@ export function createApp(deps) {
     const childId = url.searchParams.get('child');
     if (!childId || !UUID.test(childId)) throw new HttpError(422, 'invalid', 'Pick a player.');
     const scope = url.searchParams.get('scope') || 'league';
+    if (!['league', 'country', 'global'].includes(scope)) throw new HttpError(422, 'invalid', 'Unknown board.');
     const latest = await stores.getBoard('latest.json');
     if (!latest) return json({ ready: false, message: 'The first leagues start next Monday.' });
     // The league view is stored under the caller's own family id, so a child id from
@@ -294,7 +305,6 @@ export function createApp(deps) {
     if (!LEAGUE_BANDS.has(band)) throw new HttpError(422, 'invalid', 'Pick an age band.');
     const country = scope === 'country' ? String(url.searchParams.get('country') || '').toUpperCase() : 'all';
     if (scope === 'country' && !/^[A-Z]{2}$/.test(country)) throw new HttpError(422, 'invalid', 'Pick a country.');
-    if (scope !== 'country' && scope !== 'global') throw new HttpError(422, 'invalid', 'Unknown board.');
     const board = await stores.getBoard(`${latest.week}/${scope}-${country}-${band}.json`);
     return json({ ready: true, week: latest.week, optedIn: true, ...stripRefs(board || { entries: [] }) });
   });
@@ -305,8 +315,8 @@ export function createApp(deps) {
     return db.withFamily(who.familyId, async c => {
       const rows = (await c.query(
         `SELECT ch.*, coalesce(wp.points, 0) AS points, coalesce(wp.facts_mastered, 0) AS mastered
-           FROM children ch LEFT JOIN weekly_points wp ON wp.child_id = ch.id AND wp.week = date_trunc('week', now())::date
-          WHERE ch.family_id = $1 ORDER BY points DESC, ch.created_at`, [who.familyId])).rows;
+           FROM children ch LEFT JOIN weekly_points wp ON wp.child_id = ch.id AND wp.week = $2::date
+          WHERE ch.family_id = $1 ORDER BY points DESC, ch.created_at`, [who.familyId, weekOf(new Date())])).rows;
       return json({ entries: rows.map((r, i) => ({ rank: i + 1, ...childView(r), points: r.points, mastered: r.mastered })) });
     });
   });
@@ -337,16 +347,16 @@ export function createApp(deps) {
 
   on('POST', '/api/complaints', async ({ req }) => {
     const who = await auth.parent(req);
-    const b = parseOrThrow(complaintSchema, await readJson(req, 8 * 1024));
+    const b = parseOrThrow(complaintSchema, await readJson(req, LIMITS.complaintBodyBytes));
     const r = await db.withFamily(who.familyId, async c => {
       const open = (await c.query(`SELECT count(*)::int AS n FROM complaints WHERE family_id = $1 AND status <> 'resolved'`, [who.familyId])).rows[0].n;
-      if (open >= 5) throw new HttpError(429, 'too_many_open', 'You have 5 open complaints; we will reply to those first.');
+      if (open >= LIMITS.openComplaints) throw new HttpError(429, 'too_many_open', `You have ${LIMITS.openComplaints} open complaints; we will reply to those first.`);
       const row = (await c.query('INSERT INTO complaints (family_id, category, message) VALUES ($1,$2,$3) RETURNING id, status, created_at', [who.familyId, b.category, b.message])).rows[0];
       await audit(c, who.familyId, who.userId, 'complaint.received', { complaint: row.id, category: b.category });
       return row;
     });
     const due = new Date(Date.parse(r.created_at) + COMPLAINT_ACK_DAYS * 86400_000).toISOString().slice(0, 10);
-    return json({ complaint: r, acknowledgeBy: due, regulator: 'You can also complain to your data protection regulator, for example the ICO in the UK.' }, 201);
+    return json({ complaint: r, acknowledgeBy: due, regulator: `You can also complain to ${regulatorFor(who.family.rules)}.` }, 201);
   });
 
   on('GET', '/api/complaints', async ({ req }) => {
@@ -372,8 +382,12 @@ export function createApp(deps) {
       const m = r.re.exec(url.pathname);
       if (!m) continue;
       if (r.method !== req.method) continue;
-      const params = Object.fromEntries(r.keys.map((k, i) => [k, decodeURIComponent(m[i + 1])]));
-      try { return await r.handler({ req, url, params }); } catch (e) { return errorResponse(e, log); }
+      try {
+        let params;
+        try { params = Object.fromEntries(r.keys.map((k, i) => [k, decodeURIComponent(m[i + 1])])); }
+        catch { throw new HttpError(404, 'not_found', 'Not found.'); } // malformed %-escape
+        return await r.handler({ req, url, params });
+      } catch (e) { return errorResponse(e, log); }
     }
     const pathExists = routes.some(r => r.re.test(url.pathname));
     return errorResponse(new HttpError(pathExists ? 405 : 404, pathExists ? 'method_not_allowed' : 'not_found', pathExists ? 'Method not allowed.' : 'Not found.'), log);

@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { startStack, call } from './helpers.mjs';
-import { flushQueue, weeklyRollup, enforceRetention } from '../src/jobs.mjs';
+import { flushQueue, weeklyRollup, enforceRetention, reconcileRevocations } from '../src/jobs.mjs';
+import { blobStores } from '../src/queue.mjs';
 import { handleClerkEvent } from '../src/webhook.mjs';
 
 let S;
@@ -145,6 +146,25 @@ describe('sync, history and leagues', () => {
     const stats = await flushQueue({ db: S.db, stores: S.stores });
     expect(stats).toMatchObject({ saved: 1, dropped: 1 });
   });
+  it('a removal lost from storage is put back from the database', async () => {
+    const fresh = blobStores((await import('../src/queue.mjs')).memoryStoreFactory(), 'test'); // e.g. after a region move
+    expect(await fresh.isRevoked(ctx.deviceId)).toBe(false);
+    const out = await reconcileRevocations({ db: S.db, stores: fresh });
+    expect(out.fixed).toBeGreaterThanOrEqual(1);
+    expect(await fresh.isRevoked(ctx.deviceId)).toBe(true);
+    expect((await reconcileRevocations({ db: S.db, stores: fresh })).fixed).toBe(0);
+  });
+  it('every store is opened in Frankfurt', () => {
+    const seen = [];
+    blobStores(o => { seen.push(o.region); return {}; }, 'production');
+    expect(seen).toEqual(['eu-central-1', 'eu-central-1', 'eu-central-1']);
+  });
+  it('bad numbers and broken links in requests are handled, not crashed on', async () => {
+    expect((await call(S.app, 'GET', `/api/history?child=${ctx.childA}&limit=abc`, { user: A })).status).toBe(200);
+    expect((await call(S.app, 'GET', '/api/game-names?n=lots')).body.suggestions.length).toBe(3);
+    expect((await call(S.app, 'DELETE', '/api/devices/%E0%A4%A', { user: A })).status).toBe(404);
+    expect((await call(S.app, 'GET', `/api/leaderboards?child=${ctx.childA}&scope=weird`, { user: A })).status).toBe(422);
+  });
 });
 
 describe('rights', () => {
@@ -159,6 +179,9 @@ describe('rights', () => {
   it('complaints are logged with a 30-day acknowledgement date', async () => {
     const r = await call(S.app, 'POST', '/api/complaints', { user: A, body: { category: 'privacy', message: 'Please explain the backup.' } });
     expect(r.status).toBe(201); expect(r.body.acknowledgeBy).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(r.body.regulator).toContain('ICO'); // family A is in the UK
+    const me = await call(S.app, 'GET', '/api/me', { user: A });
+    expect(me.body.complaints).toMatchObject({ ackDays: 30 });
   });
   it('deleting the account needs a fresh sign-in, then erases everything', async () => {
     expect((await call(S.app, 'DELETE', '/api/account', { user: A, fva: 40 })).status).toBe(403);
