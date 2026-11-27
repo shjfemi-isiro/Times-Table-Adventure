@@ -24,7 +24,10 @@ try {
     if (errors.length) failures.push(`${path}: ${errors.slice(0, 3).join(' | ')}`);
     if (path === '/parents/') {
       const err = await page.evaluate(() => document.querySelector('.msg.err')?.textContent || '');
-      if (err) failures.push(`${path}: page shows an error: ${err}`);
+      // CI builds with a placeholder Clerk key, so Clerk can't start there; every other
+      // error still fails. Staging and production use real keys and are checked in full.
+      const placeholderClerk = process.env.E2E_PLACEHOLDER_CLERK === '1' && /^ClerkJS:/.test(err);
+      if (err && !placeholderClerk) failures.push(`${path}: page shows an error: ${err}`);
     }
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
     if (overflow) failures.push(`${path}: horizontal scroll at phone width`);

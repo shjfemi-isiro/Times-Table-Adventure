@@ -34,7 +34,7 @@ jobs:
           npm i --no-save playwright@1.65.1 && npx playwright install --with-deps chromium
           node scripts/serve-dist.mjs dist 4599 &
           sleep 1
-          BASE_URL=http://localhost:4599 npm run e2e
+          BASE_URL=http://localhost:4599 E2E_PLACEHOLDER_CLERK=1 npm run e2e
       - name: Dependency audit (runtime packages)
         run: npm audit --omit=dev --audit-level=high
   secrets:
