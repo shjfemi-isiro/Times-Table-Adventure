@@ -1,11 +1,19 @@
 import pg from 'pg';
 
+// Neon's strings say sslmode=require; pg already treats that as full certificate
+// checking but warns it will weaken in pg 9. Say verify-full so it never does.
+export function strictSsl(url) {
+  if (!url) return url;
+  return /[?&]sslmode=/.test(url) ? url.replace(/([?&]sslmode=)(prefer|require|verify-ca)\b/, '$1verify-full')
+    : url + (url.includes('?') ? '&' : '?') + 'sslmode=verify-full';
+}
+
 // One pool per function instance (module scope), never per request.
 let shared;
 export function getPool(connectionString) {
   if (!shared) {
     shared = new pg.Pool({
-      connectionString,
+      connectionString: strictSsl(connectionString),
       max: 3,
       idleTimeoutMillis: 10_000,
       connectionTimeoutMillis: 15_000, // allows for Neon waking from scale-to-zero

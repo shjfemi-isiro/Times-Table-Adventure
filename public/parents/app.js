@@ -195,6 +195,7 @@ async function start() {
   await wait();
   await window.Clerk.load({
     ui: { ClerkUI: window.__internal_ClerkUICtor },
+    telemetry: false, // no SDK usage data sent to Clerk
     appearance: {
       variables: { colorPrimary: '#1A5FCC', fontFamily: 'Nunito, system-ui, sans-serif', borderRadius: '12px' },
       // Clerk's card is 400px wide by default; let it shrink to fit a phone.

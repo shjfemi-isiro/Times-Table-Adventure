@@ -4,6 +4,7 @@
 //   check   fail on drift, removed or out-of-order migrations (pre-publish gate)
 //   apply   apply pending migrations, one transaction each
 import pg from 'pg';
+import { strictSsl } from '../src/db.mjs';
 import { loadMigrations, migrationStatus, applyMigrations, lintMigrations } from './migrations-lib.mjs';
 
 const mode = process.argv[2] || 'status';
@@ -14,7 +15,7 @@ const list = loadMigrations();
 const lint = lintMigrations(list);
 if (lint.length) { console.error(lint.join('\n')); process.exit(1); }
 
-const client = new pg.Client({ connectionString: url, connectionTimeoutMillis: 20_000 });
+const client = new pg.Client({ connectionString: strictSsl(url), connectionTimeoutMillis: 20_000 });
 await client.connect();
 try {
   const st = await migrationStatus(client, list);

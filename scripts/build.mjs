@@ -48,7 +48,7 @@ const csp = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
   `img-src 'self' data: https://img.clerk.com`,
-  `connect-src 'self' ${clerk} ${protect ? protect + ':*' : ''} https://clerk-telemetry.com`.replace(/\s+/g, ' ').trim(),
+  `connect-src 'self' ${clerk} ${protect ? protect + ':*' : ''}`.replace(/\s+/g, ' ').trim(),
   "worker-src 'self' blob:",
   `frame-src https://challenges.cloudflare.com ${protect}`.trim(),
   "media-src 'self' blob: data:",

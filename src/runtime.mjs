@@ -17,7 +17,7 @@ function shared() {
   const db = createDb(getPool(requireEnv('DATABASE_URL')));
   // Health checks and static data keep working even before Clerk keys are added.
   const secretKey = env('CLERK_SECRET_KEY');
-  const clerk = secretKey ? createClerkClient({ secretKey, publishableKey: requireEnv('CLERK_PUBLISHABLE_KEY') }) : null;
+  const clerk = secretKey ? createClerkClient({ secretKey, publishableKey: requireEnv('CLERK_PUBLISHABLE_KEY'), telemetry: { disabled: true } }) : null;
   const authorizedParties = String(env('CLERK_AUTHORIZED_PARTIES', env('URL', ''))).split(',').map(s => s.trim()).filter(Boolean);
   const verifySession = clerk ? clerkSessionVerifier(clerk, { authorizedParties }) : async () => {
     throw new HttpError(503, 'auth_not_configured', 'Grown-up sign-in is not switched on yet.');
